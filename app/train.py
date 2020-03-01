@@ -18,8 +18,8 @@ parser.add_argument("--dataset", type=str, default='movielens', help="")
 parser.add_argument("--dataset_name", type=str, default='1m', help="")
 parser.add_argument("--num_core", type=int, default=10, help="")
 parser.add_argument("--step_length", type=int, default=2, help="")
-parser.add_argument("--train_ratio", type=float, default=0.8, help="")
-parser.add_argument("--debug", default=0.01, help="")
+parser.add_argument("--train_ratio", type=float, default=0.9, help="")
+parser.add_argument("--debug", default=0.1, help="")
 
 # Model params
 # Model params
@@ -30,13 +30,13 @@ parser.add_argument("--repr_dim", type=int, default=16, help="")
 parser.add_argument("--hidden_size", type=int, default=64, help="")
 
 # Train params
-parser.add_argument("--device", type=str, default='cuda', help="")
+parser.add_argument("--device", type=str, default='cpu', help="")
 parser.add_argument("--gpu_idx", type=str, default='0', help="")
-parser.add_argument("--epochs", type=int, default=20, help="")
+parser.add_argument("--epochs", type=int, default=1000, help="")
 parser.add_argument("--opt", type=str, default='adam', help="")
 parser.add_argument("--loss", type=str, default='mse', help="")
-parser.add_argument("--batch_size", type=int, default=81920, help="")
-parser.add_argument("--lr", type=float, default=1e-4, help="")
+parser.add_argument("--batch_size", type=int, default=1024, help="")
+parser.add_argument("--lr", type=float, default=10e-3, help="")
 parser.add_argument("--weight_decay", type=float, default=10e-3, help="")
 parser.add_argument("--early_stopping", type=int, default=40, help="")
 
@@ -85,11 +85,6 @@ if __name__ == '__main__':
     dataset.data = dataset.data.to(train_args['device'])
     model = PAGATNet(num_nodes=dataset.data.num_nodes[0], **model_args).to(train_args['device'])
 
-    if not os.path.isdir(weights_folder):
-        os.mkdir(weights_folder)
-    weights_path = os.path.join(weights_folder, 'weights{}.pkl'.format(dataset.build_suffix()))
-    torch.save(model.state_dict(), weights_path)
-
     optimizer = Adam(model.parameters(), lr=train_args['lr'], weight_decay=train_args['weight_decay'])
     if torch.cuda.is_available():
         torch.cuda.synchronize()
@@ -134,10 +129,10 @@ if __name__ == '__main__':
         torch.cuda.synchronize()
     t_end = time.perf_counter()
 
-    print('Duration: {}, HR: {}, NDCG: {}, loss: {}'.format(t_start - t_end, np.mean(HR_history), np.mean(NDCG_history), np.mean(loss_history)))
+    print('Duration: {}, HR: {}, NDCG: {}, loss: {}'.format(t_end - t_start, np.mean(HR_history), np.mean(NDCG_history), np.mean(loss_history)))
 
     if not os.path.isdir(weights_folder):
         os.mkdir(weights_folder)
-    weights_path = os.path.join(weights_folder, 'weights{}.py'.format(dataset.build_suffix()))
+    weights_path = os.path.join(weights_folder, 'weights{}.pkl'.format(dataset.build_suffix()))
     torch.save(model.state_dict(), weights_path)
 
