@@ -37,7 +37,7 @@ parser.add_argument("--opt", type=str, default='adam', help="")
 parser.add_argument("--loss", type=str, default='mse', help="")
 parser.add_argument("--batch_size", type=int, default=81920, help="")
 parser.add_argument("--lr", type=float, default=1e-4, help="")
-parser.add_argument("--weight_decay", type=float, default=0, help="")
+parser.add_argument("--weight_decay", type=float, default=10e-3, help="")
 parser.add_argument("--early_stopping", type=int, default=40, help="")
 
 # Recommender params
