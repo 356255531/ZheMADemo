@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>{{ title }} - User Information</title>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.4.1/jquery.min.js"></script>
+{#    <link rel="stylesheet" href="{{ url_for('static',filename='user_information.css') }}">#}
+    <style type="text/css">
+        body, html {
+            margin:0;
+            padding: 0;
+        }
+
+        body {
+            font: 12pt Arial, sans-serif;
+            position: relative;
+            background-color: white;
+        }
+
+        form{
+            margin:0 auto;
+            font-weight:bold;
+        }
+
+        .wrap{
+            padding:5px 0;
+            margin:10px 0;
+        }
+
+        .tip{
+            width:40%;
+            padding-right:20px;
+            float:left;
+            text-align: right;
+        }
+        /* Style the navigation bar links */
+        .navbar a {
+          color: forestgreen;
+          padding: 14px 20px;
+          text-decoration: none;
+          text-align: center;
+        }
+
+        /* Change color on hover */
+        .navbar a:hover {
+          background-color: #ddd;
+          color: black;
+        }
+
+        input{
+            padding-right: 30px;
+            cursor: pointer;
+            -webkit-appearance: none;
+            background-color: #fff;
+            background-image: none;
+            border-radius: 4px;
+            border: 1px solid #dcdfe6;
+            box-sizing: border-box;
+            color: #606266;
+            display: inline-block;
+            font-size: inherit;
+            height: 30px;
+            line-height: 40px;
+            outline: none;
+            padding: 0 15px;
+            transition: border-color .2s cubic-bezier(.645,.045,.355,1);
+            font-family: inherit;
+        }
+
+        select{
+            cursor: pointer;
+            -webkit-appearance: none;
+            background-color: #fff;
+            background-image: none;
+            border-radius: 4px;
+            border: 1px solid #dcdfe6;
+            box-sizing: border-box;
+            color: #606266;
+            display: inline-block;
+            font-size: inherit;
+            height: 30px;
+            line-height: 30px;
+            outline: none;
+            padding: 0 15px;
+            transition: border-color .2s cubic-bezier(.645,.045,.355,1);
+            font-family: inherit;
+        }
+
+    </style>
+
+</head>
+<body onload = 'initDefaultValue()'>
+        <div class="navbar" align="center">
+            <a href="{{ url_for('explanation') }}">Go back</a>
+            <a id="user_background" >Next</a>
+        </div>
+
+        <form>
+          <div class="wrap">
+          <label class="tip">Your ID: </label>
+          <input id="user_id" value=""/>
+          </div>
+         </form>
+
+        <form>
+          <div class="wrap">
+          <label class="tip">Gender:</label>
+          <select id="gender">
+              <option value="M" selected="selected">Male</option>
+              <option value="F">Female</option>
+          </select>
+         </div>
+         </form>
+
+        <form>
+          <div class="wrap">
+          <label class="tip">Age: </label>
+          <select id="age">
+              <option value="0" selected="selected">0~18</option>
+              <option value="1">18~24</option>
+              <option value="2">25~34</option>
+              <option value="3">35~44</option>
+              <option value="4">45~49</option>
+              <option value="5">50~55</option>
+              <option value="6">56+</option>
+          </select>
+         </div>
+         </form>
+
+        <form>
+          <div class="wrap">
+          <label class="tip">Occupation:</label>
+          <select id="occupation">
+              <option value="0" selected="selected">Other</option>
+              <option value="1">academic/educator</option>
+              <option value="2">artist</option>
+              <option value="3">clerical/admin</option>
+              <option value="4">college/grad student</option>
+              <option value="5">customer service</option>
+              <option value="6">doctor/health care</option>
+              <option value="7">executive/managerial</option>
+              <option value="8">farmer</option>
+              <option value="9">homemaker</option>
+              <option value="10">K-12 student</option>
+              <option value="11">lawyer</option>
+              <option value="12">programmer</option>
+              <option value="13">retired</option>
+              <option value="14">sales/marketing</option>
+              <option value="15">scientist</option>
+              <option value="16">self-employed</option>
+              <option value="17">technician/engineer</option>
+              <option value="18">tradesman/craftsman</option>
+              <option value="19">unemployed</option>
+              <option value="20">writer</option>
+          </select>
+         </div>
+         </form>
+
+        <script type="text/javascript">
+            function initDefaultValue(){
+                if(typeof(Storage) !== "undefined") {
+                    sessionStorage.user_id = $("#user_id").val();
+                    sessionStorage.occupation_value = $("#occupation").children("option:selected").val();
+                    sessionStorage.gender_value = $("#gender").children("option:selected").val();
+                } else {
+                    alert("Not support web storage");
+                }
+            }
+
+            $('#user_id').change(function () {
+                if(typeof(Storage) !== "undefined") {
+
+                    sessionStorage.user_id = this.value;
+{#                    alert(sessionStorage.user_id);#}
+                } else {
+                    alert("Not support web storage");
+                }
+            });
+
+            $("#gender").change(function () {
+{#                alert(this.value);#}
+                if(typeof(Storage) !== "undefined") {
+
+                    sessionStorage.gender_value = this.value;
+
+                } else {
+                    alert("Not support web storage");
+                }
+            });
+
+            $("#age").change(function () {
+{#                alert(this.value);#}
+                if(typeof(Storage) !== "undefined") {
+
+                    sessionStorage.user_age = this.value;
+
+                } else {
+                    alert("Not support web storage");
+                }
+{#                alert(sessionStorage.occupation_value);#}
+            });
+
+             $("#occupation").change(function () {
+{#                alert(this.value);#}
+                if(typeof(Storage) !== "undefined") {
+
+                    sessionStorage.occupation_value = this.value;
+
+                } else {
+                    alert("Not support web storage");
+                }
+{#                alert(sessionStorage.occupation_value);#}
+            });
+
+            $("#user_background").on('click',function () {
+
+                user_id = $("#user_id").val();
+                gender = $("#gender").children("option:selected").val();
+                occupation = $("#occupation").children("option:selected").val();
+                age = $("#age").children("option:selected").val();
+{#                alert('user_id:'+user_id+'gender:'+gender+'occupation:'+occupation+'age:'+age);#}
+                if(user_id && gender && occupation && age){
+                    location.href = "{{ url_for('user_background') }}";
+                } else {
+                    alert("Please input all the information");
+                }
+
+            })
+
+        </script>
+
+</body>
+</html>

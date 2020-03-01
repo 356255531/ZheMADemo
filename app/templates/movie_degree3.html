@@ -1,0 +1,462 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>{{ title }} - Movie Degree</title>
+    <script src="https://code.jquery.com/jquery-3.2.1.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/raty/2.8.0/jquery.raty.min.js"></script>
+{#    <script src="app/templates/jquery.raty-2.4.5/js/jquery.min.js" type="text/javascript"></script>#}
+{#    <script src="app/templates/jquery.raty-2.4.5/js/jquery.raty.js" type="text/javascript"></script>#}
+    <style type="text/css">
+        body, html {
+            margin:0;
+            padding: 0;
+        }
+
+        body {
+            font: 12pt Arial, sans-serif;
+            position: relative;
+            background-color: white;
+        }
+
+        form{
+            margin-left: auto;
+            margin-right: auto;
+            margin-bottom: 5px;
+            width: 18%;
+            height: 40%;
+            font-weight:bold;
+        }
+
+        .wrap{
+            padding:5px 0;
+            margin:10px 0;
+        }
+
+        .tip{
+            width:40%;
+            padding-right:10px;
+            float:left;
+            text-align: right;
+        }
+        *{
+            margin: 0px;
+            padding: 0px;
+        }
+        .image{
+            width: auto;
+            height: auto;
+            border: 1px solid gray;
+            float: left;
+            margin: 1px;
+            text-align: center;
+        }
+{#        for star img#}
+        img{
+            width: 20px;
+            height: 20px;
+        }
+        .selected {
+          border: 5px solid green;
+          margin: 0;
+        }
+
+        .star-raty{
+            margin: auto;
+            width: 80%;
+{#            border: 3px solid #73AD21;#}
+            padding: 1px;
+        }
+        .poster-img{
+            width: 160px;
+            height: 160px;
+            margin: 5px;
+        }
+
+        p{
+            padding: 5px;
+            font: 16px "Adobe Fan Heiti Std";;
+            margin-bottom: 5px;
+            margin-left: 10%;
+            margin-right: 10%;
+        }
+        .text{
+            font: 12px caption;
+            margin-bottom: 5px;
+            word-break: break-all;
+            white-space: normal;
+        }
+        .explanation{
+            font: 15px caption;
+            font-family: "Helvetica Neue Light", "Lucida Grande", "Calibri", "Arial", sans-serif;
+            margin-bottom: 5px;
+        }
+
+        .animated {
+          animation-duration: 1s;
+          animation-fill-mode: both;
+        }
+
+        @keyframes bounceInDown {
+          from,
+          60%,
+          75%,
+          90%,
+          to {
+              animation-timing-function: cubic-bezier(0.215, 0.610, 0.355, 1.000);
+          }
+
+          0% {
+              opacity: 0;
+              transform: translate3d(0, -3000px, 0);
+          }
+
+          60% {
+              opacity: 1;
+              transform: translate3d(0, 25px, 0);
+          }
+
+          75% {
+              transform: translate3d(0, -10px, 0);
+          }
+
+          90% {
+              transform: translate3d(0, 5px, 0);
+          }
+
+          to {
+              transform: none;
+          }
+        }
+
+        .bounceInDown {
+          animation-name: bounceInDown;
+        }
+
+        /* Style the navigation bar links */
+        .navbar a {
+          color: forestgreen;
+          padding: 14px 20px;
+          text-decoration: none;
+          text-align: center;
+        }
+
+        /* Change color on hover */
+        .navbar a:hover {
+          background-color: #ddd;
+          color: black;
+        }
+        .container{
+            display: flex;
+            flex-wrap: wrap;
+            margin: 10px auto;
+            width: 100%;
+        }
+{#        a:hover > img{#}
+{#            transform: scale(1.5,1.5);#}
+{#            -webkit-transition: .3s transform;#}
+{#            -moz-transition: .3s transform;#}
+{#            transition: .3s transform;#}
+{#        }#}
+
+    </style>
+</head>
+<body>
+    <div class="navbar" align="center">
+        <a href="{{ url_for('movie_degree2') }}">Go back</a>
+        <a href="{{ url_for('user_feedback') }}">Next</a>
+    </div>
+    <div>
+        <h2 align="center">Make the image selected if you would like to watch this movie, and rate our recommendation reasons(1~5 points)</h2>
+    </div>
+
+
+    <div class="container" id = "container">
+        {% for movie_id, explanation in rec_movie_iids_and_explanations3 %}
+            <form>
+                <div class = 'image' id = {{ movie_id }}>
+                    <a href="#"><img class = 'poster-img' id = 'poster-img_{{ movie_id }}' src = {{ get_movie_poster_withID(movie_id) }}></a>
+                    <div class = 'text' id = 'movie_name_{{ movie_id }}'>{{ get_movie_name_withID(movie_id) }}</div>
+                    <div class = 'explanation' id = 'explanation_{{ movie_id }}'>{{ explanation }}</div>
+                    <div class = 'star-raty' id = {{ movie_id }}></div>
+                </div>
+            </form>
+        {% endfor %}
+    </div>
+
+
+    <script type="text/javascript">
+
+        $.ajaxSetup({async: false});
+        var explanation_type_list = ['','','','','','','','','',''];
+{#        set image selected function#}
+        function select(element) {
+          element.onclick = function() {
+            element.classList.toggle('selected');
+          }
+        }
+        Array.from(document.getElementsByClassName('poster-img')).forEach(select);
+
+{#        reset explanation function#}
+        var loop_index1 = 0;
+        function reset_explanation_text(element){
+            var original_text = element.innerHTML;
+            var upper_text = '';
+            var split_text_list;
+            var explanation_text = '';
+{#            var original_text = 'Uid133-Iid321-Uid456';#}
+{#            var original_text = 'Iid330-Uid321-Iid456';#}
+
+            split_text_list = original_text.split('--');
+
+            for(i = 0; i < split_text_list.length; i ++){
+                upper_text += split_text_list[i].substr(0,1);
+            }
+{#            alert('upper_text:'+upper_text);#}
+
+            explanation_type_list[loop_index1] = upper_text;
+            loop_index1 = loop_index1 + 1;
+            if(upper_text === 'UIU'){
+{#                user-based recommendation#}
+{#                (uid_x) is recommended with (iid_a) because (uid_y) is similar with (uid_x) and (uid_y) likes (iid_a)#}
+                var uid1 = split_text_list[0].substr(3);
+                var iid1 = split_text_list[1].substr(3);
+                var uid2 = split_text_list[2].substr(3);
+{#                alert('uid1='+uid1+'iid1='+iid1+'uid2='+uid2);#}
+{#                BUG:can not send parameter into flask {{  }}#}
+{#                var movie_name1 = {{ get_movie_name_withID(iid1) }};#}
+                var movie_name1;
+                var movie_data = {'movie_id':iid1};
+
+                $.post('{{ url_for('movie_name_transfer') }}',movie_data,function (response){
+                    if(response){
+                        movie_name1 = response;
+{#                        alert('movie_name1111:'+movie_name1);#}
+
+                    }
+                });
+                explanation_text = 'You are recommended with \"' + movie_name1 + '\" because user ' + '<a href="#" class="user_info_click" id="user_' + uid2 + '" onclick="ShowUserInfo();return false;"> ' + uid2 + '</a>' + ' is similar with you and user ' + uid2 + ' likes this movie';
+
+            } else if(upper_text === 'IUI'){
+{#                item-based recommendation#}
+{#                (iid_a) is recommended to (uid_x) because that (iid_a) is similar with (iid_b) which (uid_x) liked before.#}
+                var iid1 = split_text_list[0].substr(3);
+                var uid1 = split_text_list[1].substr(3);
+                var iid2 = split_text_list[2].substr(3);
+{#                alert('iid1:'+iid1+'-iid2:'+iid2);#}
+                var movie_name1;
+                var movie_name2;
+                var movie_data1 = {'movie_id':iid1};
+                var movie_data2 = {'movie_id':iid2};
+
+                $.post('{{ url_for('movie_name_transfer') }}',movie_data1,function (response){
+                    if(response){
+                        movie_name1 = response;
+                    }
+                });
+
+                $.post('{{ url_for('movie_name_transfer') }}',movie_data2,function (response){
+                    if(response){
+                        movie_name2 = response;
+                    }
+                });
+
+                explanation_text = '\"' + movie_name1 + '\" is recommended to you because that this movie is similar with \"' + movie_name2 + '\" which you liked before.';
+
+            } else if(upper_text === 'IUDD'){
+{#                demographic-based#}
+{#                (iid_a) is recommended to (uid_x) because (uid_x) has the feature (DemographicFeatureType):(DemographicFeatureValue).#}
+                var iid1 = split_text_list[0].substr(3);
+                var uid1 = split_text_list[1].substr(3);
+                var DFType = split_text_list[2].substr(6);
+                var temp_DFValue = split_text_list[3].substr(7);
+                var DFValue = '';
+
+                if(DFType === 'occ'){
+                    DFType = 'occupation';
+
+                    var key_value_DFValue = {
+                        '0':'Other',
+                        '1':'academic/educator',
+                        '2':'artist',
+                        '3':'clerical/admin',
+                        '4':'college/grad student',
+                        '5':'customer service',
+                        '6':'doctor/health care',
+                        '7':'executive/managerial',
+                        '8':'farmer',
+                        '9':'homemaker',
+                        '10':'K-12 student',
+                        '11':'lawyer',
+                        '12':'programmer',
+                        '13':'retired',
+                        '14':'sales/marketing',
+                        '15':'scientist',
+                        '16':'self-employed',
+                        '17':'technician/engineer',
+                        '18':'tradesman/craftsman',
+                        '19':'unemployed',
+                        '20':'writer'
+                    }
+
+                    DFValue = key_value_DFValue[temp_DFValue];
+                } else if(DFType === 'gender'){
+                    if(temp_DFValue === 'F'){
+                        DFValue = 'Female';
+                    } else if(temp_DFValue === 'M'){
+                        DFValue = 'Male';
+                    }
+                }
+
+                var movie_name1;
+                var movie_data1 = {'movie_id':iid1};
+
+                $.post('{{ url_for('movie_name_transfer') }}',movie_data1,function (response){
+                    if(response){
+                        movie_name1 = response;
+                    }
+                });
+
+                explanation_text = '\"' + movie_name1 + '\" is recommended to you because your ' + DFType + ' is ' + DFValue;
+
+            } else if(upper_text === 'UICC'){
+{#                content-based#}
+{#                (uid_x) is recommend with (iid_a) because (iid_a) has the cotent feature (CFtype):(CFvalue)#}
+                var uid1 = split_text_list[0].substr(3);
+                var iid1 = split_text_list[1].substr(3);
+                var CFType = split_text_list[2].substr(6);
+                var CFValue = split_text_list[3].substr(7);
+
+                var movie_name1;
+                var movie_data1 = {'movie_id':iid1};
+
+                $.post('{{ url_for('movie_name_transfer') }}',movie_data1,function (response){
+                    if(response){
+                        movie_name1 = response;
+                    }
+                });
+
+                explanation_text = movie_name1 + ' is recommended to you because the ' + CFType + ' of this movie is ' + CFValue;
+
+            } else {
+                explanation_text = original_text;
+            }
+
+            element.innerHTML = explanation_text;
+
+        }
+        Array.from($(".explanation")).forEach(reset_explanation_text);
+
+        var loop_index2 = 0;
+        $('.star-raty').raty({
+            starOff:'https://image.flaticon.com/icons/png/128/149/149222.png',
+            starOn:'https://image.flaticon.com/icons/png/128/148/148841.png',
+            size:8,
+            click:function saveScores(score, evt){
+                var seen_status = 0;
+                var all_selected_poster_img_elements = $('.poster-img.selected');
+                var poster_img_id = 'poster-img_'+this.id;
+                for(i = 0;i < all_selected_poster_img_elements.length;i++){
+                    if(String(all_selected_poster_img_elements[i].id) === poster_img_id){
+                        seen_status = 1;
+                    }
+                }
+
+                var explanation_type = explanation_type_list[loop_index2];
+                loop_index2 = loop_index2 + 1;
+                var data = {'user_id':sessionStorage.user_id,'movie_id':this.id,'seen_status':seen_status,'explanation_type':explanation_type,'score':score}
+{#                alert('user_id'+sessionStorage.user_id+'movie_id'+this.id+'seen_status'+seen_status+'explanation_type'+explanation_type+'score'+score);#}
+                $.post('{{ url_for('score_movie_transfer3') }}',data,function (response){
+                    if(response){}
+                });
+            }
+        });
+
+        var user_id_click_flag = 0;
+        $(document).on('click','a.user_info_click',function ShowUserInfo() {
+{#            example: user_1234#}
+            var user_id = this.id.substr(5);
+            var user_info = '';
+
+            var user_info_div = document.createElement("div");
+            user_info_div.style.backgroundColor = " forestgreen";
+            user_info_div.style.color = " #fff";
+            user_info_div.style.opacity = "0.9";
+            user_info_div.style.border = "3px solid green";
+            user_info_div.style.position = " absolute";
+            user_info_div.style.zIndex = 9999999;
+
+            user_info_div.style.lineHeight = "auto";
+            user_info_div.style.borderRadius = " 4px";
+{#            user_info_div.style.fontSize = " 20px";#}
+
+            user_info_div.style.textAlign = "center";
+{#            padding does not work#}
+            user_info_div.style.padding = " auto";
+
+            user_info_div.className = "animated  bounceInDown";
+            user_info_div.id = "alert";
+
+            user_info_div.style.margin = "10 auto";
+
+            var key_value_occ = {
+                        '0':'Other',
+                        '1':'academic/educator',
+                        '2':'artist',
+                        '3':'clerical/admin',
+                        '4':'college/grad student',
+                        '5':'customer service',
+                        '6':'doctor/health care',
+                        '7':'executive/managerial',
+                        '8':'farmer',
+                        '9':'homemaker',
+                        '10':'K-12 student',
+                        '11':'lawyer',
+                        '12':'programmer',
+                        '13':'retired',
+                        '14':'sales/marketing',
+                        '15':'scientist',
+                        '16':'self-employed',
+                        '17':'technician/engineer',
+                        '18':'tradesman/craftsman',
+                        '19':'unemployed',
+                        '20':'writer'
+                    }
+            var data = {'user_id':user_id};
+            $.post('{{ url_for('user_info_transfer') }}',data,function (response){
+                    if(response){
+                        var user_gender = response['user_gender'];
+                        var user_age = response['user_age'];
+                        var user_occ = response['user_occ'];
+                        var user_movie_names = response['user_movie_names'];
+                        user_info = 'Gender: ' + user_gender
+                                   + '  Age: ' + user_age
+                             + '  Occupation:' + key_value_occ[user_occ]
+                        + '<br>Favorite Movies:' + user_movie_names;
+                    }
+                });
+
+            user_info_div.innerHTML = user_info;
+{#            make user_info_div in the center#}
+            user_info_div.style.top = " 40%";
+            user_info_div.style.left = " 30%";
+            user_info_div.style.width = " 40%";
+            user_info_div.style.height = "20%";
+            var user_info_div_width = window.getComputedStyle(user_info_div, null).width;
+            user_info_div.style.marginLeft = -parseInt(user_info_div_width) / 2 + "px";
+{#            user_info_div.style.top = centerY - user_info_div.style.height /2;#}
+{#            user_info_div.style.left = centerX - user_info_div.style.width /2;#}
+
+            if(user_id_click_flag){
+                this.removeChild(this.childNodes[1]);
+                user_id_click_flag = 0;
+            } else {
+                this.appendChild(user_info_div);
+                user_id_click_flag = 1;
+            }
+
+        });
+    </script>
+
+</body>
+</html>
