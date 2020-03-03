@@ -1,8 +1,10 @@
 import argparse
 import torch
 import os
+import itertools
 from torch.utils.data import DataLoader
 from torch_geometric.datasets import MovieLens
+from torch_geometric.utils.path import join
 from torch.optim import Adam
 import time
 import numpy as np
@@ -17,11 +19,12 @@ parser = argparse.ArgumentParser()
 parser.add_argument("--dataset", type=str, default='movielens', help="")
 parser.add_argument("--dataset_name", type=str, default='1m', help="")
 parser.add_argument("--num_core", type=int, default=10, help="")
-parser.add_argument("--step_length", type=int, default=2, help="")
+parser.add_argument("--num_feat_core", type=int, default=10, help="")
 parser.add_argument("--train_ratio", type=float, default=0.8, help="")
-parser.add_argument("--debug", default=0.01, help="")
+parser.add_argument("--debug", default=None, help="")
+parser.add_argument("--seed", default=2019, help="")
 
-# Model params
+
 # Model params
 parser.add_argument("--heads", type=int, default=4, help="")
 parser.add_argument("--dropout", type=float, default=0.6, help="")
@@ -30,12 +33,13 @@ parser.add_argument("--repr_dim", type=int, default=16, help="")
 parser.add_argument("--hidden_size", type=int, default=64, help="")
 
 # Train params
+parser.add_argument("--path_length", type=int, default=2, help="")
 parser.add_argument("--device", type=str, default='cuda', help="")
 parser.add_argument("--gpu_idx", type=str, default='0', help="")
 parser.add_argument("--epochs", type=int, default=20, help="")
 parser.add_argument("--opt", type=str, default='adam', help="")
 parser.add_argument("--loss", type=str, default='mse', help="")
-parser.add_argument("--batch_size", type=int, default=81920, help="")
+parser.add_argument("--batch_size", type=int, default=1, help="")
 parser.add_argument("--lr", type=float, default=1e-4, help="")
 parser.add_argument("--weight_decay", type=float, default=10e-3, help="")
 parser.add_argument("--early_stopping", type=int, default=40, help="")
@@ -58,7 +62,8 @@ else:
 # Setup args
 dataset_args = {
     'root': data_folder, 'dataset': args.dataset, 'name': args.dataset_name,
-    'num_core': args.num_core, 'step_length': args.step_length, 'train_ratio': args.train_ratio,
+    'num_core': args.num_core, 'num_feat_core': args.num_feat_core,
+    'seed': args.seed, 'train_ratio': args.train_ratio,
     'debug': args.debug
 }
 model_args = {
@@ -66,6 +71,7 @@ model_args = {
     'repr_dim': args.repr_dim, 'dropout': args.dropout
 }
 train_args = {
+    'path_length': args.path_length,
     'debug': args.debug,
     'opt': args.opt, 'loss': args.loss,
     'epochs': args.epochs, 'batch_size': args.batch_size,
@@ -85,11 +91,6 @@ if __name__ == '__main__':
     dataset.data = dataset.data.to(train_args['device'])
     model = PAGATNet(num_nodes=dataset.data.num_nodes[0], **model_args).to(train_args['device'])
 
-    if not os.path.isdir(weights_folder):
-        os.mkdir(weights_folder)
-    weights_path = os.path.join(weights_folder, 'weights{}.pkl'.format(dataset.build_suffix()))
-    torch.save(model.state_dict(), weights_path)
-
     optimizer = Adam(model.parameters(), lr=train_args['lr'], weight_decay=train_args['weight_decay'])
     if torch.cuda.is_available():
         torch.cuda.synchronize()
@@ -101,16 +102,21 @@ if __name__ == '__main__':
     loss_history = []
     for epoch in range(1, train_args['epochs'] + 1):
         data = dataset.data
-        user_pos_neg_pair = data.train_user_pos_neg_pair[0]
-        data_loader = DataLoader(user_pos_neg_pair, shuffle=True, batch_size=train_args['batch_size'])
+        train_pos_unid_inid_map, test_pos_unid_inid_map, neg_unid_inid_map = \
+            data.train_pos_unid_inid_map[0], data.test_pos_unid_inid_map[0], data.neg_unid_inid_map[0]
 
         model.train()
         epoch_losses = []
-        train_bar = tqdm.tqdm(data_loader)
-        for user_pos_neg_pair_batch in train_bar:
-            u_nid, pos_i_nid, neg_i_nid = user_pos_neg_pair_batch.T
-            occ_nid = np.concatenate((u_nid, pos_i_nid, neg_i_nid))
-            path_index_batch = torch.from_numpy(data.path_np[0][:, np.isin(data.path_np[0][-1, :], occ_nid)]).to(train_args['device'])
+        u_nids = [data.e2nid[0]['uid'][uid] for uid in data.users[0].uid]
+        u_nid_loader = DataLoader(u_nids, shuffle=True, batch_size=train_args['batch_size'])
+        train_bar = tqdm.tqdm(u_nid_loader)
+        for u_nid in train_bar:
+            pos_i_nids = train_pos_unid_inid_map[u_nid.item()]
+            neg_i_nids = neg_unid_inid_map[u_nid.item()]
+            occurred_nid = pos_i_nids + neg_i_nids + [u_nid]
+            u_nids, pos_i_nids, neg_i_nids = np.array([[u_nid, pos_i_nid, neg_i_nid] for pos_i_nid, neg_i_nid in itertools.product(pos_i_nids, neg_i_nids)]).T
+
+            path_index_batch = join(data.edge_index, occurred_nid, length=train_args['path_length'])
             propagated_node_emb = model(model.node_emb.weight, path_index_batch)[0]
 
             u_nid, pos_i_nid, neg_i_nid = u_nid.to(device), pos_i_nid.to(device), neg_i_nid.to(device)
@@ -125,10 +131,10 @@ if __name__ == '__main__':
             epoch_losses.append(loss.cpu().item())
             train_bar.set_description('Epoch {}: loss {}'.format(epoch, np.mean(epoch_losses)))
 
-        # model.eval()
-        # HR, NDCG, loss = metrics(epoch, model, dataset, train_args, rec_args)
-        #
-        # print('Epoch: {}, HR: {}, NDCG: {}, Loss: {}'.format(epoch, HR, NDCG, loss))
+        model.eval()
+        HR, NDCG, loss = metrics(epoch, model, dataset, train_args, rec_args)
+
+        print('Epoch: {}, HR: {}, NDCG: {}, Loss: {}'.format(epoch, HR, NDCG, loss))
 
     if torch.cuda.is_available():
         torch.cuda.synchronize()
