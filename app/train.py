@@ -9,6 +9,8 @@ from torch.optim import Adam
 import time
 import numpy as np
 import tqdm
+import random
+import pandas as pd
 
 from utils import get_folder_path
 from pagat import PAGATNet
@@ -87,6 +89,7 @@ print('rec params: {}'.format(rec_args))
 
 
 if __name__ == '__main__':
+    randomizer = random.Random(2019)
     dataset = MovieLens(**dataset_args)
     dataset.data = dataset.data.to(train_args['device'])
     model = PAGATNet(num_nodes=dataset.data.num_nodes[0], **model_args).to(train_args['device'])
@@ -108,28 +111,36 @@ if __name__ == '__main__':
         model.train()
         epoch_losses = []
         u_nids = [data.e2nid[0]['uid'][uid] for uid in data.users[0].uid]
-        u_nid_loader = DataLoader(u_nids, shuffle=True, batch_size=train_args['batch_size'])
-        train_bar = tqdm.tqdm(u_nid_loader)
+
+        train_bar = randomizer.shuffle(u_nids)
         for u_nid in train_bar:
-            pos_i_nids = train_pos_unid_inid_map[u_nid.item()]
-            neg_i_nids = neg_unid_inid_map[u_nid.item()]
-            occurred_nid = pos_i_nids + neg_i_nids + [u_nid]
-            u_nids, pos_i_nids, neg_i_nids = np.array([[u_nid, pos_i_nid, neg_i_nid] for pos_i_nid, neg_i_nid in itertools.product(pos_i_nids, neg_i_nids)]).T
+            pos_i_nids = train_pos_unid_inid_map[u_nid]
+            neg_i_nids = neg_unid_inid_map[u_nid]
+            pos_i_nid_df = pd.DataFrame({'u_nid': [u_nid for _ in range(len(pos_i_nids))], 'pos_i_nid': pos_i_nids})
+            neg_i_nid_df = pd.DataFrame({'u_nid': [u_nid for _ in range(len(pos_i_nids))], 'neg_i_nid': neg_i_nids})
+            pos_neg_pair_np = pd.merge(pos_i_nid_df, neg_i_nid_df, how='inner', on='u_nid').to_numpy()
+            pos_neg_pair_loader = DataLoader(torch.from_numpy(pos_neg_pair_np).to(train_args['device']), shuffle=True, batch_size=train_args['batch_size'])
 
-            path_index_batch = join(data.edge_index, occurred_nid, length=train_args['path_length'])
-            propagated_node_emb = model(model.node_emb.weight, path_index_batch)[0]
+            for pos_neg_pair_batch in pos_neg_pair_loader:
+                u_nid_t, pos_i_nid_t, neg_i_nid_t = pos_neg_pair_batch.T
+                occurred_nids_np = np.concatenate([np.array([u_nid_t]), pos_i_nid_t, neg_i_nid_t])
+                edge_index_np = data.edge_index.item()
+                edge_index_idx = np.isin(edge_index_np[1, :], occurred_nids_np)
+                edge_index_suf = data.edge_index[:, edge_index_idx]
+                path_index_batch = join(data.edge_index, edge_index_suf)
+                propagated_node_emb = model(model.node_emb.weight, path_index_batch)[0]
 
-            u_nid, pos_i_nid, neg_i_nid = u_nid.to(device), pos_i_nid.to(device), neg_i_nid.to(device)
-            u_node_emb, pos_i_node_emb, neg_i_node_emb = propagated_node_emb[u_nid], propagated_node_emb[pos_i_nid], propagated_node_emb[neg_i_nid]
-            pred_pos = (u_node_emb * pos_i_node_emb).sum(dim=1)
-            pred_neg = (u_node_emb * neg_i_node_emb).sum(dim=1)
-            loss = - (pred_pos - pred_neg).sigmoid().log().mean()
-            loss.backward()
-            optimizer.step()
-            optimizer.zero_grad()
+                u_nid, pos_i_nid, neg_i_nid = u_nid.to(device), pos_i_nid.to(device), neg_i_nid.to(device)
+                u_node_emb, pos_i_node_emb, neg_i_node_emb = propagated_node_emb[u_nid], propagated_node_emb[pos_i_nid], propagated_node_emb[neg_i_nid]
+                pred_pos = (u_node_emb * pos_i_node_emb).sum(dim=1)
+                pred_neg = (u_node_emb * neg_i_node_emb).sum(dim=1)
+                loss = - (pred_pos - pred_neg).sigmoid().log().mean()
+                loss.backward()
+                optimizer.step()
+                optimizer.zero_grad()
 
-            epoch_losses.append(loss.cpu().item())
-            train_bar.set_description('Epoch {}: loss {}'.format(epoch, np.mean(epoch_losses)))
+                epoch_losses.append(loss.cpu().item())
+                train_bar.set_description('Epoch {}: loss {}'.format(epoch, np.mean(epoch_losses)))
 
         model.eval()
         HR, NDCG, loss = metrics(epoch, model, dataset, train_args, rec_args)
