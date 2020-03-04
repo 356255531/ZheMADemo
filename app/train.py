@@ -34,12 +34,13 @@ parser.add_argument("--repr_dim", type=int, default=16, help="")
 parser.add_argument("--hidden_size", type=int, default=64, help="")
 
 # Train params
+parser.add_argument("--path_length", type=int, default=2, help="")
 parser.add_argument("--device", type=str, default='cpu', help="")
 parser.add_argument("--gpu_idx", type=str, default='0', help="")
 parser.add_argument("--epochs", type=int, default=1000, help="")
 parser.add_argument("--opt", type=str, default='adam', help="")
 parser.add_argument("--loss", type=str, default='mse', help="")
-parser.add_argument("--batch_size", type=int, default=128, help="")
+parser.add_argument("--batch_size", type=int, default=4, help="")
 parser.add_argument("--lr", type=float, default=1e-4, help="")
 parser.add_argument("--weight_decay", type=float, default=10e-3, help="")
 parser.add_argument("--early_stopping", type=int, default=40, help="")
@@ -111,35 +112,32 @@ if __name__ == '__main__':
         u_nids = [data.e2nid[0]['uid'][uid] for uid in data.users[0].uid]
         randomizer.shuffle(u_nids)
 
-        train_bar = u_nids
-        for u_nid in train_bar:
+        train_bar = tqdm.tqdm(u_nids, total=len(u_nids))
+        for u_idx, u_nid in enumerate(train_bar):
             pos_i_nids = train_pos_unid_inid_map[u_nid]
-            neg_i_nids = neg_unid_inid_map[u_nid]
+            if len(pos_i_nids) == 0:
+                continue
+            neg_i_nids = randomizer.choices(neg_unid_inid_map[u_nid], k=len(pos_i_nids))
             pos_i_nid_df = pd.DataFrame({'u_nid': [u_nid for _ in range(len(pos_i_nids))], 'pos_i_nid': pos_i_nids})
             neg_i_nid_df = pd.DataFrame({'u_nid': [u_nid for _ in range(len(neg_i_nids))], 'neg_i_nid': neg_i_nids})
             pos_neg_pair_np = pd.merge(pos_i_nid_df, neg_i_nid_df, how='inner', on='u_nid').to_numpy()
-            pos_neg_pair_loader = DataLoader(torch.from_numpy(pos_neg_pair_np).to(train_args['device']), shuffle=True, batch_size=train_args['batch_size'])
+            u_nid, pos_i_nid, neg_i_nid = pos_neg_pair_np.T
 
-            for pos_neg_pair_batch in pos_neg_pair_loader:
-                u_nid_t, pos_i_nid_t, neg_i_nid_t = pos_neg_pair_batch.T
-                occurred_nids_np = np.concatenate([np.array([u_nid_t]), pos_i_nid_t.cpu().numpy(), neg_i_nid_t.cpu().numpy()])
-                edge_index_np = data.edge_index.item()
-                edge_index_idx = np.isin(edge_index_np[1, :], occurred_nids_np)
-                edge_index_suf = data.edge_index[:, edge_index_idx]
-                path_index_batch = join(data.edge_index, edge_index_suf)
-                propagated_node_emb = model(model.node_emb.weight, path_index_batch)[0]
+            occurred_nids_np = np.concatenate([np.array([u_nid]), pos_i_nid, neg_i_nid])
+            path_index_batch = join(data.edge_index, occurred_nids_np, path_length=train_args['path_length'])
+            path_index_batch = torch.from_numpy(path_index_batch).to(train_args['device'])
+            propagated_node_emb = model(model.node_emb.weight, path_index_batch)[0]
 
-                u_nid, pos_i_nid, neg_i_nid = u_nid.to(device), pos_i_nid.to(device), neg_i_nid.to(device)
-                u_node_emb, pos_i_node_emb, neg_i_node_emb = propagated_node_emb[u_nid], propagated_node_emb[pos_i_nid], propagated_node_emb[neg_i_nid]
-                pred_pos = (u_node_emb * pos_i_node_emb).sum(dim=1)
-                pred_neg = (u_node_emb * neg_i_node_emb).sum(dim=1)
-                loss = - (pred_pos - pred_neg).sigmoid().log().mean()
-                loss.backward()
-                optimizer.step()
-                optimizer.zero_grad()
+            u_node_emb, pos_i_node_emb, neg_i_node_emb = propagated_node_emb[u_nid], propagated_node_emb[pos_i_nid], propagated_node_emb[neg_i_nid]
+            pred_pos = (u_node_emb * pos_i_node_emb).sum(dim=1)
+            pred_neg = (u_node_emb * neg_i_node_emb).sum(dim=1)
+            loss = - (pred_pos - pred_neg).sigmoid().log().mean()
+            loss.backward()
+            optimizer.step()
+            optimizer.zero_grad()
 
-                epoch_losses.append(loss.cpu().item())
-                train_bar.set_description('Epoch {}: loss {}'.format(epoch, np.mean(epoch_losses)))
+            epoch_losses.append(loss.cpu().item())
+            train_bar.set_description('Epoch {} and user {}: loss {}'.format(epoch, u_idx,  np.mean(epoch_losses)))
 
         model.eval()
         HR, NDCG, loss = metrics(epoch, model, dataset, train_args, rec_args)
