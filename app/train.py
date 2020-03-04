@@ -41,7 +41,7 @@ parser.add_argument("--gpu_idx", type=str, default='0', help="")
 parser.add_argument("--epochs", type=int, default=20, help="")
 parser.add_argument("--opt", type=str, default='adam', help="")
 parser.add_argument("--loss", type=str, default='mse', help="")
-parser.add_argument("--batch_size", type=int, default=1, help="")
+parser.add_argument("--batch_size", type=int, default=128, help="")
 parser.add_argument("--lr", type=float, default=1e-4, help="")
 parser.add_argument("--weight_decay", type=float, default=10e-3, help="")
 parser.add_argument("--early_stopping", type=int, default=40, help="")
@@ -111,19 +111,20 @@ if __name__ == '__main__':
         model.train()
         epoch_losses = []
         u_nids = [data.e2nid[0]['uid'][uid] for uid in data.users[0].uid]
+        randomizer.shuffle(u_nids)
 
-        train_bar = randomizer.shuffle(u_nids)
+        train_bar = u_nids
         for u_nid in train_bar:
             pos_i_nids = train_pos_unid_inid_map[u_nid]
             neg_i_nids = neg_unid_inid_map[u_nid]
             pos_i_nid_df = pd.DataFrame({'u_nid': [u_nid for _ in range(len(pos_i_nids))], 'pos_i_nid': pos_i_nids})
-            neg_i_nid_df = pd.DataFrame({'u_nid': [u_nid for _ in range(len(pos_i_nids))], 'neg_i_nid': neg_i_nids})
+            neg_i_nid_df = pd.DataFrame({'u_nid': [u_nid for _ in range(len(neg_i_nids))], 'neg_i_nid': neg_i_nids})
             pos_neg_pair_np = pd.merge(pos_i_nid_df, neg_i_nid_df, how='inner', on='u_nid').to_numpy()
             pos_neg_pair_loader = DataLoader(torch.from_numpy(pos_neg_pair_np).to(train_args['device']), shuffle=True, batch_size=train_args['batch_size'])
 
             for pos_neg_pair_batch in pos_neg_pair_loader:
                 u_nid_t, pos_i_nid_t, neg_i_nid_t = pos_neg_pair_batch.T
-                occurred_nids_np = np.concatenate([np.array([u_nid_t]), pos_i_nid_t, neg_i_nid_t])
+                occurred_nids_np = np.concatenate([np.array([u_nid_t]), pos_i_nid_t.cpu().numpy(), neg_i_nid_t.cpu().numpy()])
                 edge_index_np = data.edge_index.item()
                 edge_index_idx = np.isin(edge_index_np[1, :], occurred_nids_np)
                 edge_index_suf = data.edge_index[:, edge_index_idx]
