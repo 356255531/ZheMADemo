@@ -23,7 +23,7 @@ parser.add_argument("--dataset_name", type=str, default='1m', help="")
 parser.add_argument("--num_core", type=int, default=10, help="")
 parser.add_argument("--num_feat_core", type=int, default=10, help="")
 parser.add_argument("--train_ratio", type=float, default=0.8, help="")
-parser.add_argument("--debug", default=None, help="")
+parser.add_argument("--debug", default=0.01, help="")
 parser.add_argument("--seed", default=2019, help="")
 
 
@@ -38,11 +38,11 @@ parser.add_argument("--hidden_size", type=int, default=64, help="")
 parser.add_argument("--path_length", type=int, default=2, help="")
 parser.add_argument("--device", type=str, default='cuda', help="")
 parser.add_argument("--gpu_idx", type=str, default='0', help="")
-parser.add_argument("--epochs", type=int, default=1000, help="")
+parser.add_argument("--epochs", type=int, default=20, help="")
 parser.add_argument("--opt", type=str, default='adam', help="")
 parser.add_argument("--loss", type=str, default='mse', help="")
-parser.add_argument("--batch_size", type=int, default=4, help="")
-parser.add_argument("--lr", type=float, default=1e-5, help="")
+parser.add_argument("--batch_size", type=int, default=256, help="")
+parser.add_argument("--lr", type=float, default=1e-4, help="")
 parser.add_argument("--weight_decay", type=float, default=10e-3, help="")
 parser.add_argument("--early_stopping", type=int, default=40, help="")
 
@@ -139,8 +139,18 @@ if __name__ == '__main__':
             pred_neg = (u_node_emb * neg_i_node_emb).sum(dim=1)
             loss = - (pred_pos - pred_neg).sigmoid().log().mean()
             loss.backward()
+            print(loss.cpu().item())
             optimizer.step()
             optimizer.zero_grad()
+
+            propagated_node_emb = model(model.node_emb.weight, path_index_batch)[0]
+
+            u_node_emb, pos_i_node_emb, neg_i_node_emb = \
+                propagated_node_emb[u_nids], propagated_node_emb[pos_i_nids], propagated_node_emb[neg_i_nids]
+            pred_pos = (u_node_emb * pos_i_node_emb).sum(dim=1)
+            pred_neg = (u_node_emb * neg_i_node_emb).sum(dim=1)
+            loss = - (pred_pos - pred_neg).sigmoid().log().mean()
+            print(loss.cpu().item())
 
             loss = loss.cpu().item()
             epoch_losses.append(loss)
