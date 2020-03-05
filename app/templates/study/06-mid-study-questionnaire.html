@@ -1,0 +1,15 @@
+{% from 'util/navbar.html' import navbar %}
+<!DOCTYPE html>
+<html>
+    {% include 'util/head.html' %}
+<body>
+        {{ navbar('cold_start', 'recommendations') }}
+
+        <p>
+          Add questionnaire here.
+        </p>
+
+        <a href="{{ url_for('recommendations') }}" class="button">Start</a>
+
+</body>
+</html>

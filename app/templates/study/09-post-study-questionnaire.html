@@ -1,0 +1,164 @@
+{% from 'util/navbar.html' import navbar %}
+{% from 'util/likert.html' import likert %}
+<!DOCTYPE html>
+<html>
+{% include 'util/head.html' %}
+
+<body>
+  {{ navbar('demographics', 'cold_start') }}
+
+  <h2>Please indicate how strongly you agree with the following statements</h2>
+
+  <form class="likert-scales">
+    <div>
+      <p>The explanations were helpful for understanding how the system works?</p>
+      {{ likert('post1') }}
+    </div>
+
+    <div>
+      <p>The explanations were appropriate in length and content?</p>
+      {{ likert('post2') }}
+    </div>
+
+    <div>
+      <p>I want explanations for recommendations in the future?</p>
+      {{ likert('post3') }}
+    </div>
+
+    <div>
+      <p>I understood why the system recommended these movies?</p>
+      {{ likert('post4') }}
+    </div>
+
+    <div>
+      <p>The explanations could be more detailed?</p>
+      {{ likert('post5') }}
+    </div>
+
+    <div>
+      <p>I prefer recommendations tailored towards me over general ones?</p>
+      {{ likert('post6') }}
+    </div>
+
+    <div>
+      <p>I am more likely to watch a movie if it is recommended to me by a person?</p>
+      {{ likert('post7') }}
+    </div>
+
+    <div>
+      <p>I am more likely to watch a movie if it is recommended to me by a software?</p>
+      {{ likert('post8') }}
+    </div>
+    </div>
+
+    <div>
+      <p>I am more likely to watch a movie if I am given a reason why I should watch it?</p>
+      {{ likert('post9') }}
+    </div>
+  </form>
+
+
+  <p>The following questions are about the content and form of the explanations.</p>
+
+  <form class="likert-scales">
+    <div>
+      <p>I prefer recommendations that are based on the movie itself, e.g. its genre?</p>
+      {{ likert('post10') }}
+    </div>
+
+    <div>
+      <p>I prefer recommendations that are based on my personal properties, e.g. my age?</p>
+      {{ likert('post11') }}
+    </div>
+
+    <div>
+      <p>I prefer recommendations that are based on a community, e.g. what other people enjoyed?</p>
+      {{ likert('post12') }}
+    </div>
+
+    <div>
+      <p>A diverse range of reasons for a recommendation improve the quality of the recommendation?</p>
+      {{ likert('post13') }}
+    </div>
+
+    <div>
+      <p>I preferred recommendations based on the movie itself over those based on my person?</p>
+      {{ likert('post14') }}
+    </div>
+
+    <div>
+      <p>I preferred recommendations based on my personal properties over those based on community preferences?</p>
+      {{ likert('post15') }}
+    </div>
+
+    <div>
+      <p>I preferred recommendations based on the community over those based on the movie itself?</p>
+      {{ likert('post16') }}
+    </div>
+  </form>
+
+  <a href="{{ url_for('cold_start') }}" class="button" id="next">Finish</a>
+
+  <script>
+    const BACKGROUND_KEY = 'background';
+    const DEMOGRAPHICS_KEY = 'demographics';
+
+    const nextButton = document.getElementById('next');
+
+    (function init() {
+      const sessionData = sessionStorage.getItem(BACKGROUND_KEY);
+      if (sessionData) {
+        try {
+          const data = JSON.parse(sessionData);
+          for (let key in data) {
+            document.querySelector(`[name="${key}"][value="${data[key]}"]`).checked = true;
+          }
+        } catch (err) {
+          // Ignore
+        }
+      }
+      refreshButtonState();
+    })()
+
+    nextButton.addEventListener('click', (e) => {
+      e.preventDefault();
+      if (formIsValid()) {
+        const data = { };
+        document.querySelectorAll('input[type="radio"]:checked').forEach((radio) => data[radio.name] = radio.value)
+        sessionStorage.setItem(BACKGROUND_KEY, JSON.stringify(data));
+        const demographics = JSON.parse(sessionStorage.getItem(DEMOGRAPHICS_KEY));
+        fetch(`{{ url_for('post_demographics_for_user', uid = uid) }}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ background: data, demographics }),
+        })
+          .then((res) => {
+            if (res.status > 399) {
+              throw new Error('Failed to submit data');
+            }
+          })
+          .then(() => location = `{{ url_for('cold_start') }}`)
+          .catch((err) => {
+            console.info(err);
+          });
+      }
+    });
+
+    function formIsValid() {
+      return document.querySelectorAll('input[type="radio"]:checked').length === document.querySelectorAll('.likert-scales p').length;
+    }
+
+    function refreshButtonState() {
+      if (formIsValid()) {
+        nextButton.classList.remove('disabled');
+      } else {
+        nextButton.classList.add('disabled');
+      }
+    }
+
+    document.querySelectorAll('input[type="radio"]').forEach((elem) => elem.addEventListener('change',
+      refreshButtonState));
+  </script>
+</body>
+
+</html>

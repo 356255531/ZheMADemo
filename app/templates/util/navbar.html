@@ -1,0 +1,11 @@
+{% macro navbar(prev, next) -%}
+<div class="navbar">
+  <h1>Movie Recommendation Study</h1>
+  {% if config['DEBUG'] %}
+  <div>
+    <a href="{{ url_for(prev) }}">Go back</a>
+    <a href="{{ url_for(next) }}" >Next</a>
+  </div>
+  {% endif %}
+</div>
+{%- endmacro %}
