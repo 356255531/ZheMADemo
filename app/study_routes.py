@@ -2,6 +2,7 @@ from flask import render_template, request, redirect, jsonify, url_for, make_res
 from uuid import uuid4
 from app import app
 from .model_utils import get_top_movie_ids, get_movie_name_for_id, get_movie_poster_for_id, recsys
+from .db_utils import save_demographics_to_db, save_background_to_db
 
 # Template renders
 
@@ -146,11 +147,16 @@ def get_movie_recommendations_for_user_incomplete_cold(uid):
 @app.route('/api/user/<uid>/demographics', methods = [ 'POST' ])
 def post_demographics_for_user(uid):
     """
-    API endpoint that receives demographic information about the current user
+    API endpoint that receives demographic information about the current user,
+    stores in the DB and updates the model
     """
-    demographics = (request.json['demographics']['gender'], request.json['demographics']['occupation'])
-    print(demographics)
-    recsys.build_user([ ], demographics)
+    demographics = request.json['demographics']
+    save_demographics_to_db(uid, demographics['age'], demographics['gender'], demographics['occupation'])
+
+    background = request.json['background']
+    save_background_to_db(uid, background)
+
+    recsys.build_user([ ], (demographics['gender'], demographics['occupation']))
     return make_response(jsonify({ 'success': True }), 202)
 
 

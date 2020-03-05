@@ -12,38 +12,38 @@
   <form class="likert-scales">
     <div>
       <p>How often do you watch a movie?</p>
-      {{ likert('frequency1', [ 'Daily', 'Multiple per week', 'Once per week', 'Once per month', 'Less frequently' ]) }}
+      {{ likert('watch_frequency', [ 'Daily', 'Multiple per week', 'Once per week', 'Once per month', 'Less frequently' ]) }}
        
     </div>
 
     <div>
       <p>How often do you look for movie recommendations?</p>
-      {{ likert('frequency2', [ 'Daily', 'Multiple per week', 'Once per week', 'Once per month', 'Less frequently' ]) }}
+      {{ likert('recommendation_frequency', [ 'Daily', 'Multiple per week', 'Once per week', 'Once per month', 'Less frequently' ]) }}
     </div>
 
     <div>
       <p>How often do you use systems that provide recommendations?</p>
-      {{ likert('frequency3', [ 'Daily', 'Multiple per week', 'Once per week', 'Once per month', 'Less frequently' ]) }}
+      {{ likert('recommendation_system_frequency', [ 'Daily', 'Multiple per week', 'Once per week', 'Once per month', 'Less frequently' ]) }}
     </div>
 
     <div>
       <p>How familiar are you with recommendation services?</p>
-      {{ likert('frequency4', [ 'Very familiar', 'Somewhat familiar', 'Neutral', 'Somewhat unfamiliar', 'Entirely unfamiliar' ]) }}
+      {{ likert('recommendation_familiarity', [ 'Very familiar', 'Somewhat familiar', 'Neutral', 'Somewhat unfamiliar', 'Entirely unfamiliar' ]) }}
     </div>
 
     <div>
       <p>How familiar are you with explainable recommendation systems?</p>
-      {{ likert('frequency5', [ 'Very familiar', 'Somewhat familiar', 'Neutral', 'Somewhat unfamiliar', 'Entirely unfamiliar' ]) }}
+      {{ likert('explainable_recommendation_familiarity', [ 'Very familiar', 'Somewhat familiar', 'Neutral', 'Somewhat unfamiliar', 'Entirely unfamiliar' ]) }}
     </div>
 
     <div>
       <p>How would you describe your overall experience with systems that provide recommendations?</p>
-      {{ likert('frequency6', [ 'Excellent', 'Good', 'Neutral', 'Poor', 'Terrible' ]) }}
+      {{ likert('recommender_experience', [ 'Excellent', 'Good', 'Neutral', 'Poor', 'Terrible' ]) }}
     </div>
 
     <div>
       <p>How confident are you that a system will provide matching recommendations to you?</p>
-      {{ likert('frequency7', [ 'Highly confident', 'Somewhat confident', 'Neutral', 'Somewhat unconfident', 'Highly unconfident' ]) }}
+      {{ likert('system_confidence', [ 'Highly confident', 'Somewhat confident', 'Neutral', 'Somewhat unconfident', 'Highly unconfident' ]) }}
     </div>
 
   </form>

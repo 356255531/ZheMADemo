@@ -1,15 +1,85 @@
 import os.path
 import sqlite3
 
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+db_path = os.path.join(BASE_DIR, "MATDemo.db")
+
+
+demographics_table = 'demographics'
+create_demographics_table = 'CREATE TABLE IF NOT EXISTS `%s` (\
+    user_id VARCHAR NOT NULL, \
+    age INT NUT NULL, \
+    gender CHAR NOT NULL, \
+    occupation INT NOT NULL\
+)' % demographics_table
+
+background_table = 'background'
+create_background_table = 'CREATE TABLE IF NOT EXISTS `%s` (\
+    user_id VARCHAR NOT NULL,\
+    watch_frequency INT NOT NULL,\
+    recommendation_frequency INT NOT NULL,\
+    recommendation_system_frequency INT NOT NULL,\
+    recommendation_familiarity INT NOT NULL,\
+    explainable_recommendation_familiarity INT NOT NULL,\
+    recommender_experience INT NOT NULL,\
+    system_confidence INT NOT NULL\
+)' % background_table
+
+
+connection = sqlite3.connect(db_path)
+cursor = connection.cursor()
+cursor.execute(create_demographics_table)
+cursor.execute(create_background_table)
+# TODO create all other tables once on startup!
+connection.commit()
+connection.close()
+
+
+def save_demographics_to_db(user_id, age, gender, occupation):
+    connection = sqlite3.connect(db_path)
+    cursor = connection.cursor()
+
+    params = (
+        user_id,
+        age,
+        gender,
+        occupation
+    )
+
+    cursor.execute('INSERT INTO `%s` VALUES (?, ?, ?, ?)' % demographics_table, params)
+    connection.commit()
+    connection.close()
+    return True
+
+
+def save_background_to_db(user_id, background):
+    connection = sqlite3.connect(db_path)
+    cursor = connection.cursor()
+
+    params = (
+        user_id,
+        background['watch_frequency'],
+        background['recommendation_frequency'],
+        background['recommendation_system_frequency'],
+        background['recommendation_familiarity'],
+        background['explainable_recommendation_familiarity'],
+        background['recommender_experience'],
+        background['system_confidence'],
+    )
+
+    cursor.execute('INSERT INTO `%s` VALUES (?, ?, ?, ?, ?, ?, ?, ?)' % background_table, params)
+    connection.commit()
+    connection.close()
+    return True
+
+
 def save_explanation_score_to_sqlite(user_id,movie_id,seen_status,explanation_type,explanation_score,user_study_round):
-    BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-    db_path = os.path.join(BASE_DIR, "MATDemo.db")
     connection = sqlite3.connect(db_path)
 
     cursor = connection.cursor()
     print("Opened database successfully")
 
-    cursor.execute('create table if not exists EXP_SCORE (user_id,movie_id,seen_status,explanation_type,explanation_score,user_study_round)')
+    cursor.execute('CREATE TABLE IF NOT EXISTS EXP_SCORE (user_id,movie_id,seen_status,explanation_type,explanation_score,user_study_round)')
     params = (user_id,movie_id,seen_status,explanation_type,explanation_score,user_study_round)
 
     cursor.execute("INSERT INTO EXP_SCORE VALUES (?,?,?,?,?,?)",params)
@@ -21,8 +91,6 @@ def save_explanation_score_to_sqlite(user_id,movie_id,seen_status,explanation_ty
 
 
 def save_question_result1_tosqlite(user_id,question_result1_list):
-    BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-    db_path = os.path.join(BASE_DIR, "MATDemo.db")
     connection = sqlite3.connect(db_path)
 
     cursor = connection.cursor()
@@ -47,8 +115,6 @@ def save_question_result1_tosqlite(user_id,question_result1_list):
 
 
 def save_question_result2_tosqlite(user_id,question_result2_list):
-    BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-    db_path = os.path.join(BASE_DIR, "MATDemo.db")
     connection = sqlite3.connect(db_path)
 
     cursor = connection.cursor()
@@ -79,8 +145,6 @@ def save_question_result2_tosqlite(user_id,question_result2_list):
 
 
 def select_explanation_type_and_score(user_id,round_number):
-    BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-    db_path = os.path.join(BASE_DIR, "MATDemo.db")
     connection = sqlite3.connect(db_path)
 
     cursor = connection.cursor()
