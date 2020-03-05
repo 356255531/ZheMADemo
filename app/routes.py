@@ -2,25 +2,6 @@ from flask import render_template, request
 from app import app
 
 
-@app.template_global()
-def select_explanation_type_and_score(user_id,round_number):
-    BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-    db_path = os.path.join(BASE_DIR, "MATDemo.db")
-    connection = sqlite3.connect(db_path)
-
-    cursor = connection.cursor()
-    print("Opened database successfully")
-
-    params = (str(user_id),str(round_number))
-    cursor.execute("SELECT explanation_type, explanation_score FROM EXP_SCORE WHERE user_id=? AND user_study_round=?",params)
-
-    explanation_type_score_rows = cursor.fetchall()
-
-    connection.commit()
-    print("Select data successfully")
-
-    return explanation_type_score_rows;
-
 # @app.route('/')
 # @app.route('/index')
 def index():

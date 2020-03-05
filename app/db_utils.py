@@ -1,5 +1,7 @@
-@app.template_global()
-def save_explanation_score_tosqlite(user_id,movie_id,seen_status,explanation_type,explanation_score,user_study_round):
+import os.path
+import sqlite3
+
+def save_explanation_score_to_sqlite(user_id,movie_id,seen_status,explanation_type,explanation_score,user_study_round):
     BASE_DIR = os.path.dirname(os.path.abspath(__file__))
     db_path = os.path.join(BASE_DIR, "MATDemo.db")
     connection = sqlite3.connect(db_path)
@@ -18,7 +20,6 @@ def save_explanation_score_tosqlite(user_id,movie_id,seen_status,explanation_typ
     return 1
 
 
-@app.template_global()
 def save_question_result1_tosqlite(user_id,question_result1_list):
     BASE_DIR = os.path.dirname(os.path.abspath(__file__))
     db_path = os.path.join(BASE_DIR, "MATDemo.db")
@@ -45,7 +46,6 @@ def save_question_result1_tosqlite(user_id,question_result1_list):
     return 1
 
 
-@app.template_global()
 def save_question_result2_tosqlite(user_id,question_result2_list):
     BASE_DIR = os.path.dirname(os.path.abspath(__file__))
     db_path = os.path.join(BASE_DIR, "MATDemo.db")
@@ -76,3 +76,22 @@ def save_question_result2_tosqlite(user_id,question_result2_list):
 
     connection.close()
     return 1
+
+
+def select_explanation_type_and_score(user_id,round_number):
+    BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+    db_path = os.path.join(BASE_DIR, "MATDemo.db")
+    connection = sqlite3.connect(db_path)
+
+    cursor = connection.cursor()
+    print("Opened database successfully")
+
+    params = (str(user_id),str(round_number))
+    cursor.execute("SELECT explanation_type, explanation_score FROM EXP_SCORE WHERE user_id=? AND user_study_round=?",params)
+
+    explanation_type_score_rows = cursor.fetchall()
+
+    connection.commit()
+    print("Select data successfully")
+
+    return explanation_type_score_rows;

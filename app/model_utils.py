@@ -2,21 +2,20 @@ from app import app
 import pandas as pd
 import requests
 import json
-import sqlite3
-import os.path
 import random
 import argparse
 import torch
 from torch_geometric.datasets import MovieLens
+
 from .pgat_recsys import PGATRecSys
 from .utils import get_folder_path
+from .apikey import apikey
 
-
-parser = argparse.ArgumentParser()
 default_poster_src = 'https://www.nehemiahmfg.com/wp-content/themes/dante/images/default-thumb.png'
 
-
 ########################## Define arguments ##########################
+parser = argparse.ArgumentParser()
+
 # Dataset params
 parser.add_argument("--dataset", type=str, default='movielens', help="")
 parser.add_argument("--dataset_name", type=str, default='1m', help="")
@@ -38,6 +37,8 @@ parser.add_argument("--gpu_idx", type=str, default='0', help="")
 
 args = parser.parse_args()
 
+data_folder, weights_folder, logger_folder = get_folder_path(args.dataset + args.dataset_name)
+
 # save id selected by users
 current_user_id = ''
 iid_list = []
@@ -50,14 +51,13 @@ rs_proportion = {'IUI':3,
                  'UICC':2,
                  'SUM':10}
 
-########################## Define arguments ##########################
-data_folder, weights_folder, logger_folder = get_folder_path(args.dataset + args.dataset_name)
 
 ########################## Setup Device ##########################
 if not torch.cuda.is_available() or args.device == 'cpu':
     device = 'cpu'
 else:
     device = 'cuda:{}'.format(args.gpu_idx)
+
 
 ########################## Define parameters ##########################
 dataset_args = {
@@ -79,26 +79,23 @@ recsys = PGATRecSys(num_recs=10, dataset_args=dataset_args, model_args=model_arg
 
 refresh_value = 0
 
-@app.template_global()
-def generateIDs(n):
+
+# Model Util Functions
+
+def get_top_movie_ids(n):
     movie_df = recsys.get_top_n_popular_items(n)
     iids = [iid for iid in movie_df.iid.values]
     return iids
 
-@app.template_global()
-def get_movie_name_withID(i):
+
+def get_movie_name_for_id(i):
     i = int(i)
     movies = pd.read_csv('app/ml-1m/movies.dat', sep='::', engine='python')
     movie_name = movies['MovieName'][i]
     return movie_name
 
-@app.template_global()
-def get_movie_poster_withID(i):
 
-    # apikey = 'e760129c'
-    # apikey = 'e44e5305'
-    apikey = 'c32748ad'
-    # apikey = '192c6b0e'
+def get_movie_poster_for_id(i):
     movies = pd.read_csv('app/ml-1m/movies.dat', sep='::', engine='python')
     movie_name = get_movie_name_withID(i)
     movie_title = movie_name[0:-7]
@@ -107,10 +104,8 @@ def get_movie_poster_withID(i):
 
     movie_url = "http://www.omdbapi.com/?" + "t=" + movie_title + "&y=" + movie_year + "&apikey=" + apikey
     movie_url_no_year = "http://www.omdbapi.com/?" + "t=" + movie_title + "&apikey=" + apikey
-    # print('movie_url: ' + movie_url)
 
     r = requests.get(movie_url)
-    # print(r.text)
     response_text = json.loads(r.text)
     try:
         movie_info_dic = response_text
@@ -121,10 +116,7 @@ def get_movie_poster_withID(i):
             return poster
 
     except:
-
         response_value = response_text['Response']
-        # print('response_value:'+response_value)
-        # {"Response": "False", "Error": "Movie not found!"}
         if 'False' == response_value:
             r2 = requests.get(movie_url_no_year)
             movie_info_dic2 = json.loads(r2.text)
@@ -138,10 +130,8 @@ def get_movie_poster_withID(i):
                 return default_poster_src
 
 
-@app.template_global()
 def run_adaptation_model(user_id,proportion,round_number):
     # get type and score data from sqlite3 database
-
     explanation_type_and_score_list = select_explanation_type_and_score(user_id,round_number)
 
     # calculate average score

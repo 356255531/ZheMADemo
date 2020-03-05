@@ -1,8 +1,7 @@
 from flask import render_template, request, redirect, jsonify, url_for, make_response
 from uuid import uuid4
 from app import app
-from .model_utils import generateIDs as get_ids, get_movie_name_withID as get_movie_name_for_id, get_movie_poster_withID as get_movie_poster_for_id
-
+from .model_utils import get_top_movie_ids, get_movie_name_for_id, get_movie_poster_for_id, recsys
 
 # Template renders
 
@@ -150,6 +149,7 @@ def post_demographics_for_user(uid):
     API endpoint that receives demographic information about the current user
     """
     demographics = (request.json['demographics']['gender'], request.json['demographics']['occupation'])
+    print(demographics)
     recsys.build_user([ ], demographics)
     return make_response(jsonify({ 'success': True }), 202)
 

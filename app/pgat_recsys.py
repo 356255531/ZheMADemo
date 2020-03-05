@@ -62,7 +62,8 @@ class PGATRecSys(object):
         self.new_user_nid = self.model.node_emb.weight.shape[0]
 
         new_user_gender_nid = self.data.e2nid[0]['gender'][demographic_info[0]]
-        new_user_occ_nid = self.data.e2nid[0]['occ'][int(demographic_info[1])]
+        print(self.data.e2nid[0]['occ'])
+        new_user_occ_nid = self.data.e2nid[0]['occ'][str(demographic_info[1])]
         i_nids = [self.data.e2nid[0]['iid'][iid] for iid in iids]
         row = i_nids + [new_user_gender_nid, new_user_occ_nid]
         col = [self.new_user_nid for i in range(len(iids) + 2)]
