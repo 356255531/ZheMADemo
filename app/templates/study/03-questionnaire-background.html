@@ -52,6 +52,7 @@
   <script>
     const BACKGROUND_KEY = 'background';
     const DEMOGRAPHICS_KEY = 'demographics';
+    const DUMP_DEMOGRAPHICS_URL = `{{ url_for('post_demographics_for_user', uid = uid) }}`;
 
     const nextButton = document.getElementById('next');
 
@@ -77,7 +78,7 @@
         document.querySelectorAll('input[type="radio"]:checked').forEach((radio) => data[radio.name] = radio.value)
         sessionStorage.setItem(BACKGROUND_KEY, JSON.stringify(data));
         const demographics = JSON.parse(sessionStorage.getItem(DEMOGRAPHICS_KEY));
-        fetch(`{{ url_for('post_demographics_for_user', uid = uid) }}`, {
+        fetch(DUMP_DEMOGRAPHICS_URL, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ background: data, demographics }),

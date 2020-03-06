@@ -9,6 +9,7 @@ from .db_utils import save_demographics_to_db, \
                       save_background_to_db, \
                       save_user_preferences_to_db, \
                       save_questionnaire_to_db
+from .constants import SYSTEMS
 
 # Template renders
 
@@ -53,32 +54,10 @@ def cold_start():
     uid = request.cookies.get('uid')
     if uid is None:
         return redirect(url_for('introduction'))
-
-    # TODO Determine which system to use for this user
-
-    system = 'ours'
-
     return render_template('study/05-cold-start.html',
         uid = uid,
-        get_movies_url = url_for('get_movie_recommendations_for_user', uid = uid, system = system),
         threshold = 25,
-        system = system,
-        next = 'incomplete_cold_start')
-
-
-@app.route('/incomplete-cold-start', methods = [ 'GET' ])
-def incomplete_cold_start():
-    uid = request.cookies.get('uid')
-    if uid is None:
-        return redirect(url_for('introduction'))
-
-    system = 'ours'
-    return render_template('study/05-cold-start.html',
-        uid = uid,
-        get_movies_url = url_for('get_movie_recommendations_for_user', uid = uid, system = system),
-        threshold = 25,
-        system = system,
-        next = 'system_feedback')
+        systems = list(SYSTEMS.values()))
 
 
 @app.route('/system-feedback', methods = [ 'GET' ])
@@ -102,7 +81,9 @@ def recommendations():
     uid = request.cookies.get('uid')
     if uid is None:
         return redirect(url_for('introduction'))
-    system = 'ours_trained'
+
+    system = SYSTEMS['OUR_SYSTEM']
+
     return render_template('study/08-explained-recommendations.html',
         uid = uid,
         get_movies_url = url_for('get_movie_recommendations_for_user', uid = uid, system = system),
@@ -152,17 +133,22 @@ def get_movie_recommendations_for_user(uid, system):
     API endpoint that provides a set of recommendations, ignoring previously
     seen recommendations, i.e. "cold recommendations"
     """
-    # TODO Determine whether to use our or the reference method for this user
-    # TODO Retrieve recommendations from the model
-    # TODO Send recommendations as JSON to client
-    if system == 'ours':
-        recommendations = recsys.get_recommendations({ 'IUI': 4, 'UIU':  5, 'IUDD': 3, 'UICC': 1 })
-    else:
-        recommendations = [ ]
-    return jsonify(recommendations)
+    n = request.args.get('count') or 10
 
-    # return jsonify({ 'id': 0, 'image': 'https://m.media-amazon.com/images/M/MV5BMDU2ZWJlMjktMTRhMy00ZTA5LWEzNDgtYmNmZTEwZTViZWJkXkEyXkFqcGdeQXVyNDQ2OTk4MzI@._V1_SX300.jpg', 'title': 'Toy Story' })
-    # return make_response(jsonify({ 'error': 'Not Implemented'}), 501)
+    if system == SYSTEMS['OUR_SYSTEM']:
+        # recommendations = recsys.get_recommendations({ 'IUI': 4, 'UIU':  5, 'IUDD': 3, 'UICC': 1 })
+        return jsonify([ { 'id': 0, 'image': 'https://m.media-amazon.com/images/M/MV5BMDU2ZWJlMjktMTRhMy00ZTA5LWEzNDgtYmNmZTEwZTViZWJkXkEyXkFqcGdeQXVyNDQ2OTk4MzI@._V1_SX300.jpg', 'title': 'Toy Story' } ])
+    elif system == SYSTEMS['BENCHMARK_1']:
+        # TODO
+        recommendations = [ ]
+        return jsonify([ { 'id': 0, 'image': 'https://m.media-amazon.com/images/M/MV5BMDU2ZWJlMjktMTRhMy00ZTA5LWEzNDgtYmNmZTEwZTViZWJkXkEyXkFqcGdeQXVyNDQ2OTk4MzI@._V1_SX300.jpg', 'title': 'Toy Story' } ])
+    elif system == SYSTEMS['BENCHMARK_2']:
+        # TODO
+        recommendations = [ ]
+        return jsonify([ { 'id': 0, 'image': 'https://m.media-amazon.com/images/M/MV5BMDU2ZWJlMjktMTRhMy00ZTA5LWEzNDgtYmNmZTEwZTViZWJkXkEyXkFqcGdeQXVyNDQ2OTk4MzI@._V1_SX300.jpg', 'title': 'Toy Story' } ])
+    else:
+        return jsonify({ 'error': 'System %s not available' % system }, 404)
+    return jsonify(recommendations)
 
 
 @app.route('/api/user/<uid>/demographics', methods = [ 'POST' ])

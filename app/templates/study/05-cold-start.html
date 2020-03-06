@@ -5,7 +5,7 @@
     <script src="https://hammerjs.github.io/dist/hammer.min.js"></script>
 <body>
 
-    {{ navbar('background', next) }}
+    {{ navbar('background', 'system_feedback') }}
 
     <h3>Are you interested in or did you enjoy watching this movie</h3>
 
@@ -19,41 +19,72 @@
     <script type="text/javascript">
         const MOVIES_SSKEY = 'movies';
         const CONTINUE_THRESHOLD = {{ threshold or 10 }};
-        const POST_MOVIES_URL = `{{ url_for('post_movie_preferences_for_user', uid = uid, system = system or 'none') }}`;
-        const GET_NEW_MOVIES_URL = `{{ get_movies_url }}`;
-        const SYSTEM = `{{ system or 'none' }}`;
+        const POST_PREFERENCES_URL = `{{ url_for('post_movie_preferences_for_user', uid = uid) }}`;
+        const GET_NEW_MOVIES_URL = `{{ url_for('get_movie_recommendations_for_user', uid = uid, system = ':system') }}`;
+        const SYSTEMS = [ {% for sys in systems %} '{{ sys }}', {% endfor %} ].sort(() => Math.random() > .5 ? 1 : -1);
 
         const container = document.getElementById('container');
-        const movies = JSON.parse(sessionStorage.getItem(MOVIES_SSKEY) || '{ }');
+        const moviePreferences = JSON.parse(sessionStorage.getItem(MOVIES_SSKEY) || '{ }');
 
-        function refresh () {
-            if (container.classList.contains('loading')) {
-                return;
-            }
+        let system = null;
+        let remainingMovies = [ ];
 
-            const hits = Object.keys(movies).map((key) => movies[key]).filter((a) => a).length;
-            if (hits >= CONTINUE_THRESHOLD) {
-                // When we have n positive hits, continue
-                sessionStorage.setItem(MOVIES_SSKEY, JSON.stringify(movies));
+        function handleError () {
+            container.classList.remove('loading');
+            container.innerText = 'Failed to load. Please ask the supervisor for help.'
+        }
 
+        /** Transition to next system or next page if all systems are covered */
+        async function switchSystem () {
+            if (SYSTEMS.length < 1) {
+                console.info('All systems completed, moving to next page.');
                 // Send data to API
-                fetch(POST_MOVIES_URL, {
+                fetch(POST_PREFERENCES_URL, {
                     method: 'POST',
-                    body: JSON.stringify(movies),
+                    body: JSON.stringify(moviePreferences),
                     headers: { 'Content-Type': 'application/json' },
                 })
                     .then(() => {
                         sessionStorage.setItem(MOVIES_SSKEY, '{ }');
-                        location = `{{ url_for(next) }}`
+                        location = `{{ url_for('system_feedback') }}`
                     })
-                    .catch((err) => console.error(err));
+                    .catch(handleError);
             } else {
+                system = SYSTEMS.pop();
+                console.info('Transitioning to', system);
+                remainingMovies = [ ];
+                refresh();
+            }
+        }
+
+        /** Loads more movies for the current system from the API */
+        async function loadMoreMovies () {
+            const response = await fetch(GET_NEW_MOVIES_URL.replace(':system', system), { method: 'GET' })
+            if (response.status < 400) {
+                remainingMovies = remainingMovies.concat(await response.json());
+            } else {
+                handleError();
+            }
+            return refresh();
+        }
+
+        async function refresh () {
+            try {
+                // Clear the page
                 container.innerHTML = '';
                 container.classList.add('loading');
-                fetch(GET_NEW_MOVIES_URL, { method: 'GET' })
-                    .then((res) => res.json())
-                    .then(({ id, title, image }) => {
-                        container.innerHTML = '';
+
+                // Count hits
+                // TODO
+                const hits = Object.keys(moviePreferences).map((key) => moviePreferences[key]).filter((a) => a).length;
+                if (hits >= CONTINUE_THRESHOLD) {
+                    // When we have n positive hits, continue
+                    sessionStorage.setItem(MOVIES_SSKEY, JSON.stringify(moviePreferences));
+                    switchSystem();
+                } else {
+                    if (remainingMovies.length) {
+                        // Show the movie next in the list
+                        const { id, title, image } = remainingMovies.pop();
                         const label = document.createElement('label');
                         const img = document.createElement('img');
                         const span = document.createElement('span');
@@ -65,24 +96,26 @@
                         label.appendChild(span);
                         container.appendChild(label);
                         container.classList.remove('loading');
-                    })
-                    .catch((err) => {
-                        container.classList.remove('loading');
-                        container.innerText = 'Failed to load. Please ask the supervisor for help.'
-                        console.error(err);
-                    });
+                    } else {
+                        loadMoreMovies();
+                    }
+                }
+            } catch (exception) {
+                handleError();
             }
         }
 
         function accept () {
+            if (container.classList.contains('loading')) return;
             const id = container.id;
-            movies[id] = true;
+            moviePreferences[id] = true;
             refresh();
         }
 
         function reject () {
+            if (container.classList.contains('loading')) return;
             const id = container.id;
-            movies[id] = true;
+            moviePreferences[id] = true;
             refresh();
         }
 
@@ -94,7 +127,7 @@
         hammerJS.on('swiperight', accept);
         hammerJS.on('swipeleft', reject);
 
-        refresh();
+        switchSystem();
     </script>
 </body>
 </html>
