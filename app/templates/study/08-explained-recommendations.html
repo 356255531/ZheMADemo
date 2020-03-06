@@ -2,15 +2,166 @@
 <!DOCTYPE html>
 <html>
     {% include 'util/head.html' %}
+    <script src="https://hammerjs.github.io/dist/hammer.min.js"></script>
 <body>
-        {{ navbar('system_feedback', 'post_study_questionnaire') }}
-        <p>
-          Below you find several movie recommendations as well as explanations
-          why the have been recommended.
-        </p>
-        <p>
-          Select
-        </p>
-        <a href="{{ url_for('post_study_questionnaire') }}" class="button">Start</a>
+    {{ navbar('system_feedback', 'post_study_questionnaire') }}
+
+    <h3>Are you interested in or did you enjoy watching this movie</h3>
+
+    <div class="container" id="container"></div>
+
+
+
+    <div class="tinder-buttons">
+        <button id="reject">&#x2715;</button>
+        <button id="accept">&#x2713;</button>
+    </div>
+
+    <div class="rating-scale hidden">
+        <button><img src="{{ url_for('static', filename='res/star-off.svg') }}"></button>
+        <button><img src="{{ url_for('static', filename='res/star-off.svg') }}"></button>
+        <button><img src="{{ url_for('static', filename='res/star-off.svg') }}"></button>
+        <button><img src="{{ url_for('static', filename='res/star-off.svg') }}"></button>
+        <button><img src="{{ url_for('static', filename='res/star-off.svg') }}"></button>
+    </div>
+
+    <script>
+        const MOVIES_SSKEY = 'movies';
+        const EXPL_SSKEY = 'movies';
+        const CONTINUE_THRESHOLD = {{ threshold or 10 }};
+        const POST_MOVIES_URL = `{{ url_for('post_movie_preferences_for_user', uid = uid, system = system or 'none') }}`;
+        const GET_NEW_MOVIES_URL = `{{ get_movies_url }}`;
+        const SYSTEM = `{{ system or 'none' }}`;
+
+        const container = document.getElementById('container');
+        const movies = JSON.parse(sessionStorage.getItem(MOVIES_SSKEY) || '{ }');
+        const explanations = JSON.parse(sessionStorage.getItem(EXPL_SSKEY) || '{ }');
+
+        const STAGE = {
+            NONE: 0x00,
+            MOVIE: 0x01,
+            EXPL: 0x02,
+            LOADING: 0x04,
+            ERROR: 0x08,
+        };
+        let stage = STAGE.NONE;
+
+
+
+        function loadNewMovie () {
+            // If vote is expected or already loading, skip
+            if (stage === STAGE.MOVIE || stage === STAGE.LOADING) {
+                return;
+            }
+            stage = STAGE.NONE;
+
+            // Clear the page
+            container.innerHTML = '';
+            container.classList.add('loading');
+
+            const hits = Object.keys(movies).map((key) => movies[key]).filter((a) => a).length;
+            if (hits >= CONTINUE_THRESHOLD) {
+                // When we have n positive hits, continue with data submission
+                sessionStorage.setItem(MOVIES_SSKEY, JSON.stringify(movies));
+
+                // Send data to API
+                fetch(POST_MOVIES_URL, {
+                    method: 'POST',
+                    body: JSON.stringify(movies),
+                    headers: { 'Content-Type': 'application/json' },
+                })
+                    .then(() => {
+                        // Clear the storage
+                        sessionStorage.setItem(MOVIES_SSKEY, '{ }');
+                        // Move on to the next page
+                        location = `{{ url_for('post_study_questionnaire') }}`
+                    })
+                    .catch((err) => console.error(err));
+            } else {
+                stage = STAGE.LOADING;
+                // Get a new movie to rate
+                fetch(GET_NEW_MOVIES_URL, { method: 'GET' })
+                    .then((res) => res.json())
+                    .then(({ id, title, image, explanation }) => {
+                        stage = STAGE.MOVIE;
+                        // Show the correct inputs
+                        document.querySelector('.tinder-buttons').classList.remove('hidden');
+                        document.querySelector('.rating-scale').classList.add('hidden');
+
+                        container.id = id;
+                        // Create the necessary elements
+                        const label = document.createElement('label');
+                        label.classList.add('movie-card');
+                        const img = document.createElement('img');
+                        img.src = image;
+                        const span = document.createElement('span');
+                        const expl = document.createElement('p');
+                        // Set the correct instruction heading
+                        document.querySelector('h3').innerText = 'Are you interested in or did you enjoy watching this movie?';
+                        // Generate the explanation
+                        expl.appendChild(document.createTextNode(explanation || 'TEST'));
+                        expl.classList.add(('hidden'));
+                        expl.classList.add('explanation')
+                        // Append everything
+                        span.appendChild(document.createTextNode(title));
+                        label.appendChild(img);
+                        label.appendChild(span);
+                        container.appendChild(label);
+                        container.appendChild(expl);
+                        container.classList.remove('loading');
+                    })
+                    .catch((err) => {
+                        stage = STAGE.ERROR;
+                        container.classList.remove('loading');
+                        container.innerText = 'Failed to load. Please ask the supervisor for help.'
+                        console.error(err);
+                    });
+            }
+        }
+
+        function showExplanation () {
+            stage = STAGE.EXPL;
+            // Show the explanation + buttons, hide the rest
+            document.querySelector('.container label').classList.add('hidden');
+            document.querySelector('.container .explanation').classList.remove('hidden');
+            document.querySelector('.tinder-buttons').classList.add('hidden');
+            document.querySelector('.rating-scale').classList.remove('hidden');
+        }
+
+        /** Call when the user accepts the recommendation */
+        function accept () {
+            const id = container.id;
+            movies[id] = true;
+            showExplanation();
+        }
+
+        /** Call when the user rejects the recommendation */
+        function reject () {
+            const id = container.id;
+            movies[id] = true;
+            showExplanation();
+        }
+
+        // Input method: Buttons
+        document.querySelector('.tinder-buttons button:first-child').addEventListener('click', reject);
+        document.querySelector('.tinder-buttons button:last-child').addEventListener('click', accept);
+        // Input method: Keyboad
+        window.addEventListener('keypress', (e) => e.keyCode === 101 ? reject() : null);
+        window.addEventListener('keypress', (e) => e.keyCode === 105 ? accept() : null);
+        const hammerJS = new Hammer(document.body);
+        // Input method: Swipe
+        hammerJS.on('swiperight', accept);
+        hammerJS.on('swipeleft', reject);
+
+        // Input method for rating the explanation: Button
+        document.querySelectorAll('.rating-scale button').forEach((btn, i, btns) => {
+            btn.addEventListener('click', () => {
+                explanations['TODO Unique key for move and explanation'] = i;
+                loadNewMovie();
+            });
+        });
+
+        loadNewMovie();
+    </script>
 </body>
 </html>

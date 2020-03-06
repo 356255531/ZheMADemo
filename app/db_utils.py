@@ -73,6 +73,16 @@ def save_background_to_db(user_id, background):
     return True
 
 
+def save_user_preferences_to_db(user_id, preference_data):
+    # TODO
+    pass
+
+
+def save_questionnaire_to_db(user_id, questionnaire_data):
+    # TODO
+    pass
+
+
 def save_explanation_score_to_sqlite(user_id,movie_id,seen_status,explanation_type,explanation_score,user_study_round):
     connection = sqlite3.connect(db_path)
 

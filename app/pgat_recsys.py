@@ -10,6 +10,26 @@ from .pagat import PAGATNet
 from .utils import get_folder_path
 
 
+def get_dataloader(data, batch_size):
+    train_pos_unid_inid_map, test_pos_unid_inid_map, neg_unid_inid_map = \
+        data.train_pos_unid_inid_map[0], data.test_pos_unid_inid_map[0], data.neg_unid_inid_map[0]
+    train_pos_pair_np = list(itertools.chain.from_iterable([[[k, vv] for vv in v] for k, v in train_pos_unid_inid_map.items()]))
+    train_pos_pair_df = pd.DataFrame(train_pos_pair_np, columns=['u_nid', 'pos_i_nid'])
+    test_pos_pair_np = list(itertools.chain.from_iterable([[[k, vv] for vv in v] for k, v in test_pos_unid_inid_map.items()]))
+    test_pos_pair_df = pd.DataFrame(test_pos_pair_np, columns=['u_nid', 'pos_i_nid'])
+    neg_pair_np = list(itertools.chain.from_iterable([[[k, vv] for vv in v] for k, v in neg_unid_inid_map.items()]))
+    neg_pair_df = pd.DataFrame(neg_pair_np, columns=['u_nid', 'neg_i_nid'])
+    train_dataloader = DataLoader(
+        pd.merge(train_pos_pair_df, neg_pair_df, how='inner', on='u_nid').to_numpy(),
+        shuffle=True,
+        batch_size=batch_size)
+    test_dataloader = DataLoader(
+        pd.merge(test_pos_pair_df, neg_pair_df, how='inner', on='u_nid').to_numpy(),
+        shuffle=True,
+        batch_size=batch_size)
+    return train_dataloader, test_dataloader
+
+
 class PGATRecSys(object):
     def __init__(self, num_recs, dataset_args, model_args, device_args):
         self.num_recs = num_recs
@@ -17,6 +37,8 @@ class PGATRecSys(object):
 
         self.dataset = MovieLens(**dataset_args)
         self.data = self.dataset.data.to(device_args['device'])
+        path_index_np = path.join(data.edge_index.cpu().numpy(), path_length=2)
+        path_index = torch.from_numpy(path_index_np).to(train_args['device'])
 
         model_path = model_args['model_path']
         model_path = os.path.join(model_path, 'weights{}.pkl'.format(self.dataset.build_suffix()))
@@ -62,7 +84,6 @@ class PGATRecSys(object):
         self.new_user_nid = self.model.node_emb.weight.shape[0]
 
         new_user_gender_nid = self.data.e2nid[0]['gender'][demographic_info[0]]
-        print(self.data.e2nid[0]['occ'])
         new_user_occ_nid = self.data.e2nid[0]['occ'][str(demographic_info[1])]
         i_nids = [self.data.e2nid[0]['iid'][iid] for iid in iids]
         row = i_nids + [new_user_gender_nid, new_user_occ_nid]

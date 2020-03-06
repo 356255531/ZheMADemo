@@ -21,5 +21,8 @@
 
         <a href="{{ url_for('demographics') }}" class="button">Start</a>
 
+    <script>
+        sessionStorage.setItem('study_start', (new Date()).toString());
+    </script>
 </body>
 </html>

@@ -97,7 +97,7 @@ def get_movie_name_for_id(i):
 
 def get_movie_poster_for_id(i):
     movies = pd.read_csv('app/ml-1m/movies.dat', sep='::', engine='python')
-    movie_name = get_movie_name_withID(i)
+    movie_name = get_movie_name_for_id(i)
     movie_title = movie_name[0:-7]
     movie_title = movie_title.replace(' ','+')
     movie_year = movie_name[-5:-1]

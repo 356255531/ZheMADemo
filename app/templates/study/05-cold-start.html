@@ -2,88 +2,97 @@
 <!DOCTYPE html>
 <html lang="en">
     {% include 'util/head.html' %}
+    <script src="https://hammerjs.github.io/dist/hammer.min.js"></script>
 <body>
 
     {{ navbar('background', next) }}
 
-    <h2>Please indicate which of the following movies you are interested in or enjoyed watching</h2>
+    <h3>Are you interested in or did you enjoy watching this movie</h3>
 
-    <div class="container loading" id="container"></div>
+    <div class="container" id="container"></div>
 
-    <button id="refresh">Next</button>
+    <div class="tinder-buttons">
+        <button id="reject">&#x2715;</button>
+        <button id="accept">&#x2713;</button>
+    </div>
 
     <script type="text/javascript">
         const MOVIES_SSKEY = 'movies';
-        const KNOWLEDGE_THRESHOLD = 10;
-        const USERDATA_DUMP_URL = `{{ url_for('post_movie_preferences_for_user', uid = uid) }}`;
+        const CONTINUE_THRESHOLD = {{ threshold or 10 }};
+        const POST_MOVIES_URL = `{{ url_for('post_movie_preferences_for_user', uid = uid, system = system or 'none') }}`;
         const GET_NEW_MOVIES_URL = `{{ get_movies_url }}`;
-        const DEMOGRAPHICS_KEY = 'demographics';
+        const SYSTEM = `{{ system or 'none' }}`;
 
         const container = document.getElementById('container');
         const movies = JSON.parse(sessionStorage.getItem(MOVIES_SSKEY) || '{ }');
 
         function refresh () {
-            container.innerHTML = '';
-            container.classList.add('loading');
-            fetch(GET_NEW_MOVIES_URL + `?offset=${Math.floor(Math.random() * 294)}`, { method: 'GET' })
-                .then((res) => res.json())
-                .then((data) => {
-                    const container = document.getElementById('container');
-                    container.innerHTML = '';
-                    data.forEach(({ id, title, image }) => {
+            if (container.classList.contains('loading')) {
+                return;
+            }
+
+            const hits = Object.keys(movies).map((key) => movies[key]).filter((a) => a).length;
+            if (hits >= CONTINUE_THRESHOLD) {
+                // When we have n positive hits, continue
+                sessionStorage.setItem(MOVIES_SSKEY, JSON.stringify(movies));
+
+                // Send data to API
+                fetch(POST_MOVIES_URL, {
+                    method: 'POST',
+                    body: JSON.stringify(movies),
+                    headers: { 'Content-Type': 'application/json' },
+                })
+                    .then(() => {
+                        sessionStorage.setItem(MOVIES_SSKEY, '{ }');
+                        location = `{{ url_for(next) }}`
+                    })
+                    .catch((err) => console.error(err));
+            } else {
+                container.innerHTML = '';
+                container.classList.add('loading');
+                fetch(GET_NEW_MOVIES_URL, { method: 'GET' })
+                    .then((res) => res.json())
+                    .then(({ id, title, image }) => {
+                        container.innerHTML = '';
                         const label = document.createElement('label');
                         const img = document.createElement('img');
                         const span = document.createElement('span');
                         label.classList.add('movie-card');
-                        label.id = id;
+                        container.id = id;
                         img.src = image;
-                        label.addEventListener('click', () => {
-                            // Toggle class to indicated which movies have been selected
-                            label.classList.toggle('selected');
-                            // Store movie knowledge state
-                            movies[id] = label.classList.contains('selected');
-                        });
                         span.appendChild(document.createTextNode(title));
                         label.appendChild(img);
                         label.appendChild(span);
                         container.appendChild(label);
+                        container.classList.remove('loading');
+                    })
+                    .catch((err) => {
+                        container.classList.remove('loading');
+                        container.innerText = 'Failed to load. Please ask the supervisor for help.'
+                        console.error(err);
                     });
-                    container.classList.remove('loading');
-                })
-                .catch((err) => {
-                    container.classList.remove('loading');
-                    container.innerText = 'Failed to load. Please ask the supervisor for help.'
-                    console.error(err);
-                });
-
+            }
         }
 
-        document.querySelector('button').addEventListener('click', () => {
-            if (container.classList.contains('loading')) {
-                return;
-            }
-            const hits = Object.keys(movies).map((key) => movies[key]).filter((a) => a).length;
-            if (hits >= KNOWLEDGE_THRESHOLD) {
-                // When we have n positive hits, continue
-                const data = {
-                    demographics: JSON.parse(sessionStorage.getItem(DEMOGRAPHICS_KEY)),
-                    movies,
-                };
-                sessionStorage.setItem(MOVIES_SSKEY, JSON.stringify(movies));
+        function accept () {
+            const id = container.id;
+            movies[id] = true;
+            refresh();
+        }
 
-                // Send data to API
-                fetch(USERDATA_DUMP_URL, {
-                    method: 'POST',
-                    body: JSON.stringify(data),
-                    headers: { 'Content-Type': 'application/json' },
-                })
-                    .then(() => location = `{{ url_for(next) }}`)
-                    .catch((err) => console.error(err));
-            } else {
-                // Not enough hits? Load more movies
-                refresh();
-            }
-        });
+        function reject () {
+            const id = container.id;
+            movies[id] = true;
+            refresh();
+        }
+
+        document.querySelector('.tinder-buttons button:first-child').addEventListener('click', reject);
+        document.querySelector('.tinder-buttons button:last-child').addEventListener('click', accept);
+        window.addEventListener('keypress', (e) => e.keyCode === 101 ? reject() : null);
+        window.addEventListener('keypress', (e) => e.keyCode === 105 ? accept() : null);
+        const hammerJS = new Hammer(document.body);
+        hammerJS.on('swiperight', accept);
+        hammerJS.on('swipeleft', reject);
 
         refresh();
     </script>

@@ -3,23 +3,18 @@
 <html>
     {% include 'util/head.html' %}
 <body>
-        {{ navbar('index', 'demographics') }}
-
-        <h1>Movie Recommendations &ndash; User Study</h1>
-        <p>
-            Welcome and thank you for participating in our user study on movie recommendation systems.<br>
-            In this study you will receive some recommendation on movies you may be interested in. You will then provide feedback regarding these suggestions and the system.<br>
-            The goal is to improve recommender systems by providing transparency to you, the user.
-        </p>
+        {{ navbar('system_feedback', 'recommendations') }}
 
         <p>
-            The study will take approximately 30 minutes.<br>
-            If you have questions at any point during the study, feel free to ask the supervisor.
+            In the following section you will continue to provide feedback as to which
+            movies your are interested in as before.
         </p>
-
-        <p>By participating in this study you agree to the data protection policy shown below.</p>
-
-        <a href="{{ url_for('demographics') }}" class="button">Start</a>
+        <p>
+            However, each recommendation now has an attached explanations, why this
+            specific movie was recommended to you.
+            For each of these
+        </p>
+        <a href="{{ url_for('recommendations') }}" class="button">Start</a>
 
 </body>
 </html>

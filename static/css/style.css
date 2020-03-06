@@ -63,14 +63,14 @@ p {
   padding: 0;
 }
 
-h1, h2 {
+h1, h2, h3 {
   padding: 0;
   margin: 1rem;
 }
 
 
 
-form, .container {
+form {
   background-color: #f8f8f8;
   border: thin solid #dddddd;
   margin: 1rem auto;
@@ -151,10 +151,11 @@ label span + * {
 
 .movie-card img {
   display: block;
-  width: 12rem;
+  width: 80vw;
+  max-width: 24rem;
 }
 
-.movie-card {
+.movie-card, .explanation {
   margin: .5rem;
   background-color: #ffffff;
   padding: .5rem;
@@ -164,11 +165,66 @@ label span + * {
     0 3px 24px rgba(0, 0, 0, .06);
   transition: box-shadow .25s;
   user-select: none;
+}
 
+.explanation {
+  text-align: left;
+  width: 100%;
 }
 
 .movie-card.selected {
   background-color: #009440;
   color: #ffffff;
   box-shadow: none;
+}
+
+.tinder-buttons, .rating-scale {
+  display: flex;
+  flex-direction: row;
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 8rem;
+  justify-content: space-evenly;
+  align-items: center;
+}
+
+.rating-scale button, .tinder-buttons button {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-width: auto;
+  border-radius: 50%;
+  font-size: 3rem;
+  width: 6rem;
+  height: 6rem;
+  box-shadow:
+    0 2px 6px rgba(0, 0, 0, .15),
+    0 3px 12px rgba(0, 0, 0, .1),
+    0 4px 24px rgba(0, 0, 0, .05);
+}
+
+.tinder-buttons button:first-child {
+  background-color: #FF4343;
+}
+
+.tinder-buttons button:last-child {
+  background-color: #00CC6A;
+}
+
+.rating-scale button {
+  background-color: #ffffff;
+  width: 4rem;
+  height: 4rem;
+  margin: .25rem;
+}
+
+.rating-scale img {
+  height: 3rem;
+  width: 3rem;
+}
+
+.hidden {
+  display: none !important;
 }

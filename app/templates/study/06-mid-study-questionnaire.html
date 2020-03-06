@@ -3,13 +3,13 @@
 <html>
     {% include 'util/head.html' %}
 <body>
-        {{ navbar('cold_start', 'recommendations') }}
+        {{ navbar('cold_start', 'recommendations_intro') }}
 
         <p>
           Add questionnaire here.
         </p>
 
-        <a href="{{ url_for('recommendations') }}" class="button">Start</a>
+        <a href="{{ url_for('recommendations_intro') }}" class="button">Start</a>
 
 </body>
 </html>

@@ -5,7 +5,7 @@
 {% include 'util/head.html' %}
 
 <body>
-  {{ navbar('demographics', 'cold_start') }}
+  {{ navbar('recommendations', 'wrap_up') }}
 
   <h2>Please indicate how strongly you agree with the following statements</h2>
 
@@ -97,16 +97,16 @@
     </div>
   </form>
 
-  <a href="{{ url_for('cold_start') }}" class="button" id="next">Finish</a>
+  <a href="{{ url_for('wrap_up') }}" class="button" id="next">Finish</a>
 
   <script>
-    const BACKGROUND_KEY = 'background';
-    const DEMOGRAPHICS_KEY = 'demographics';
+    const POST_QUESTIONNAIRE_KEY = 'post-questionnaire';
+    const POST_QUESTIONNAIRE_DATA_URL = `{{ url_for('post_questionnaire', uid = uid) }}`
 
     const nextButton = document.getElementById('next');
 
     (function init() {
-      const sessionData = sessionStorage.getItem(BACKGROUND_KEY);
+      const sessionData = sessionStorage.getItem(POST_QUESTIONNAIRE_KEY);
       if (sessionData) {
         try {
           const data = JSON.parse(sessionData);
@@ -125,19 +125,18 @@
       if (formIsValid()) {
         const data = { };
         document.querySelectorAll('input[type="radio"]:checked').forEach((radio) => data[radio.name] = radio.value)
-        sessionStorage.setItem(BACKGROUND_KEY, JSON.stringify(data));
-        const demographics = JSON.parse(sessionStorage.getItem(DEMOGRAPHICS_KEY));
-        fetch(`{{ url_for('post_demographics_for_user', uid = uid) }}`, {
+        sessionStorage.setItem(POST_QUESTIONNAIRE_KEY, JSON.stringify(data));
+        fetch(POST_QUESTIONNAIRE_DATA_URL, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ background: data, demographics }),
+          body: JSON.stringify(data),
         })
           .then((res) => {
             if (res.status > 399) {
               throw new Error('Failed to submit data');
             }
           })
-          .then(() => location = `{{ url_for('cold_start') }}`)
+          .then(() => location = `{{ url_for('wrap_up') }}`)
           .catch((err) => {
             console.info(err);
           });

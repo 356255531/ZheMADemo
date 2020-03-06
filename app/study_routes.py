@@ -1,8 +1,14 @@
 from flask import render_template, request, redirect, jsonify, url_for, make_response
 from uuid import uuid4
 from app import app
-from .model_utils import get_top_movie_ids, get_movie_name_for_id, get_movie_poster_for_id, recsys
-from .db_utils import save_demographics_to_db, save_background_to_db
+from .model_utils import get_top_movie_ids, \
+                         get_movie_name_for_id, \
+                         get_movie_poster_for_id, \
+                         recsys
+from .db_utils import save_demographics_to_db, \
+                      save_background_to_db, \
+                      save_user_preferences_to_db, \
+                      save_questionnaire_to_db
 
 # Template renders
 
@@ -47,9 +53,16 @@ def cold_start():
     uid = request.cookies.get('uid')
     if uid is None:
         return redirect(url_for('introduction'))
+
+    # TODO Determine which system to use for this user
+
+    system = 'ours'
+
     return render_template('study/05-cold-start.html',
         uid = uid,
-        get_movies_url = url_for('get_movie_recommendations_for_user_cold', uid = uid),
+        get_movies_url = url_for('get_movie_recommendations_for_user', uid = uid, system = system),
+        threshold = 25,
+        system = system,
         next = 'incomplete_cold_start')
 
 
@@ -58,9 +71,13 @@ def incomplete_cold_start():
     uid = request.cookies.get('uid')
     if uid is None:
         return redirect(url_for('introduction'))
+
+    system = 'ours'
     return render_template('study/05-cold-start.html',
         uid = uid,
-        get_movies_url = url_for('get_movie_recommendations_for_user_incomplete_cold', uid = uid),
+        get_movies_url = url_for('get_movie_recommendations_for_user', uid = uid, system = system),
+        threshold = 25,
+        system = system,
         next = 'system_feedback')
 
 
@@ -85,7 +102,13 @@ def recommendations():
     uid = request.cookies.get('uid')
     if uid is None:
         return redirect(url_for('introduction'))
-    return render_template('study/08-explained-recommendations.html', uid = uid)
+    system = 'ours_trained'
+    return render_template('study/08-explained-recommendations.html',
+        uid = uid,
+        get_movies_url = url_for('get_movie_recommendations_for_user', uid = uid, system = system),
+        threshold = 25,
+        system = system,
+    )
 
 
 @app.route('/post-study', methods = [ 'GET' ])
@@ -95,6 +118,10 @@ def post_study_questionnaire():
         return redirect(url_for('introduction'))
     return render_template('study/09-post-study-questionnaire.html', uid = uid)
 
+
+@app.route('/wrap-up', methods = [ 'GET' ])
+def wrap_up():
+    pass
 
 # API Endpoints
 
@@ -110,7 +137,7 @@ def get_top_movies():
     offset = request.args.get('offset', default = 0, type = int)
     count = request.args.get('count', default = 6, type = int)
 
-    ids = get_ids(300)[offset:offset + count]
+    ids = get_top_movie_ids(300)[offset:offset + count]
 
     return jsonify([ {
         'title': get_movie_name_for_id(id),
@@ -119,29 +146,23 @@ def get_top_movies():
     } for id in ids ])
 
 
-@app.route('/api/user/<uid>/movies/recommendations/cold', methods = [ 'GET' ])
-def get_movie_recommendations_for_user_cold(uid):
+@app.route('/api/user/<uid>/recommendations/<system>', methods = [ 'GET' ])
+def get_movie_recommendations_for_user(uid, system):
     """
     API endpoint that provides a set of recommendations, ignoring previously
     seen recommendations, i.e. "cold recommendations"
     """
     # TODO Determine whether to use our or the reference method for this user
     # TODO Retrieve recommendations from the model
-    df, explanations = recsys.get_recommendations([ ])
     # TODO Send recommendations as JSON to client
-    return make_response(jsonify({ 'error': 'Not Implemented'}), 501)
+    if system == 'ours':
+        recommendations = recsys.get_recommendations({ 'IUI': 4, 'UIU':  5, 'IUDD': 3, 'UICC': 1 })
+    else:
+        recommendations = [ ]
+    return jsonify(recommendations)
 
-
-@app.route('/api/user/<uid>/movies/recommendations/incomplete-cold', methods = [ 'GET' ])
-def get_movie_recommendations_for_user_incomplete_cold(uid):
-    """
-    API endpoint that provides a set of recommendations, including previously
-    seen recommendations, i.e. "incomplete cold recommendations"
-    """
-    # TODO Retrieve recommendations from the model
-    # TODO Send recommendations as JSON to client
-    return make_response(jsonify({ 'error': 'Not Implemented'}), 501)
-
+    # return jsonify({ 'id': 0, 'image': 'https://m.media-amazon.com/images/M/MV5BMDU2ZWJlMjktMTRhMy00ZTA5LWEzNDgtYmNmZTEwZTViZWJkXkEyXkFqcGdeQXVyNDQ2OTk4MzI@._V1_SX300.jpg', 'title': 'Toy Story' })
+    # return make_response(jsonify({ 'error': 'Not Implemented'}), 501)
 
 
 @app.route('/api/user/<uid>/demographics', methods = [ 'POST' ])
@@ -160,17 +181,21 @@ def post_demographics_for_user(uid):
     return make_response(jsonify({ 'success': True }), 202)
 
 
-@app.route('/api/user/<uid>/movies/preferences', methods = [ 'POST' ])
+@app.route('/api/user/<uid>/preferences', methods = [ 'POST' ])
 def post_movie_preferences_for_user(uid):
     """
     API endpoint for incrementally refining the user profile.
     The endpoints takes a list of movie preferences and builds
     them into the user profile.
     """
-    # TODO
+    preference_data = request.json
+    save_user_preferences_to_db(uid, preference_data)
+    # TODO recsys.build_user(...)
     return make_response(jsonify({ 'error': 'Not Implemented'}), 501)
 
 
-@app.route('/api/questionnaires/post', methods = [ 'POST' ])
-def post_questionnaire():
-    return make_response(jsonify({ 'error': 'Not Implemented'}), 501)
+@app.route('/api/user/<uid>/questionnaires/post', methods = [ 'POST' ])
+def post_questionnaire(uid):
+    questionnaire_data = request.json
+    save_questionnaire_to_db(uid, questionnaire_data)
+    return make_response(jsonify({ 'success': True }), 202)
