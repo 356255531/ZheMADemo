@@ -1,0 +1,123 @@
+{% from 'util/navbar.html' import navbar %}
+<!DOCTYPE html>
+<html>
+    {% include 'util/head.html' %}
+<body>
+        {{ navbar('introduction', 'background') }}
+
+        <h2>Please provide some information about you</h2>
+
+        <form>
+            <input id="userID" type="hidden" value="{{ uid }}" required >
+
+            <label>
+                <span>Gender:</span>
+                <select id="gender" required>
+                    <option value="-1">Please select</option>
+                    <option value="M">Male</option>
+                    <option value="F">Female</option>
+                    <option value="O">Other</option>
+                    <option value="N">Do not disclose</option>
+                </select>
+            </label>
+
+            <label>
+                <span>Age:</span>
+                <select id="age" required>
+                    <option value="-1">Please select</option>
+                    <option value="0">Younger than 18</option>
+                    <option value="1">18-24</option>
+                    <option value="2">25-34</option>
+                    <option value="3">35-44</option>
+                    <option value="4">45-54</option>
+                    <option value="5">55-54</option>
+                    <option value="6">65 or older</option>
+                </select>
+            </label>
+
+            <label>
+                <span>Occupation:</span>
+                <select id="occupation" required>
+                    <option value="-1">Please select</option>
+                    <option value="0">Other</option>
+                    <option value="1">Academia / Education</option>
+                    <option value="2">Artist</option>
+                    <option value="3">Clerical / Admininstration</option>
+                    <option value="4">College / Grad student</option>
+                    <option value="5">Customer service</option>
+                    <option value="6">Doctor / Health care</option>
+                    <option value="7">Executive / Managerial</option>
+                    <option value="8">Farmer</option>
+                    <option value="9">Homemaker</option>
+                    <option value="10">K-12 student</option>
+                    <option value="11">Lawyer</option>
+                    <option value="12">Programmer</option>
+                    <option value="13">Retired</option>
+                    <option value="14">Sales / Marketing</option>
+                    <option value="15">Scientist</option>
+                    <option value="16">Self-employed</option>
+                    <option value="17">Technician / Engineer</option>
+                    <option value="18">Tradesman / Craftsman</option>
+                    <option value="19">Unemployed</option>
+                    <option value="20">Writer</option>
+                </select>
+            </label>
+        </form>
+
+        <a href="{{ url_for('background') }}" class="button" id="next">Next</a>
+
+        <script type="text/javascript">
+        const DEMOGRAPHICS_KEY = 'demographics';
+
+        const nextButton = document.getElementById('next');
+        const genderInput = document.getElementById('gender');
+        const ageInput = document.getElementById('age');
+        const occupationInput = document.getElementById('occupation');
+
+        (function init () {
+            const sessionData = sessionStorage.getItem(DEMOGRAPHICS_KEY);
+            if (sessionData) {
+                try {
+                    const data = JSON.parse(sessionData);
+                    genderInput.value = data.gender || -1;
+                    ageInput.value = data.age || -1;
+                    occupationInput.value = data.occupation || -1;
+                } catch (err) {
+                    // Ignore
+                }
+            }
+            refreshButtonState();
+        })()
+
+        nextButton.addEventListener('click', (e) => {
+            if (formIsValid()) {
+                const data = {
+                    gender: genderInput.value,
+                    age: ageInput.value,
+                    occupation: occupationInput.value,
+                };
+                sessionStorage.setItem(DEMOGRAPHICS_KEY, JSON.stringify(data));
+            } else {
+                e.preventDefault();
+            }
+        });
+
+        function formIsValid () {
+            return genderInput.value != -1 &&
+                ageInput.value != -1 &&
+                occupationInput.value != -1;
+        }
+
+        function refreshButtonState () {
+            if (formIsValid()) {
+                nextButton.classList.remove('disabled');
+            } else {
+                nextButton.classList.add('disabled');
+            }
+        }
+
+        document.querySelectorAll('[required]').forEach((elem) => elem.addEventListener('change', refreshButtonState));
+        </script>
+
+</body>
+</html>

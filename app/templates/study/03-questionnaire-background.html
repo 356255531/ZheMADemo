@@ -1,0 +1,114 @@
+{% from 'util/navbar.html' import navbar %}
+{% from 'util/likert.html' import likert %}
+<!DOCTYPE html>
+<html>
+{% include 'util/head.html' %}
+
+<body>
+  {{ navbar('demographics', 'cold_start') }}
+
+  <h2>Please provide some information about you</h2>
+
+  <form class="likert-scales">
+    <div>
+      <p>How often do you watch a movie?</p>
+      {{ likert('watch_frequency', [ 'Daily', 'Multiple per week', 'Once per week', 'Once per month', 'Less frequently' ]) }}
+       
+    </div>
+
+    <div>
+      <p>How often do you look for movie recommendations?</p>
+      {{ likert('recommendation_frequency', [ 'Daily', 'Multiple per week', 'Once per week', 'Once per month', 'Less frequently' ]) }}
+    </div>
+
+    <div>
+      <p>How often do you use systems that provide recommendations?</p>
+      {{ likert('recommendation_system_frequency', [ 'Daily', 'Multiple per week', 'Once per week', 'Once per month', 'Less frequently' ]) }}
+    </div>
+
+    <div>
+      <p>How familiar are you with recommendation services?</p>
+      {{ likert('recommendation_familiarity', [ 'Very familiar', 'Somewhat familiar', 'Neutral', 'Somewhat unfamiliar', 'Entirely unfamiliar' ]) }}
+    </div>
+
+    <div>
+      <p>How familiar are you with explainable recommendation systems?</p>
+      {{ likert('explainable_recommendation_familiarity', [ 'Very familiar', 'Somewhat familiar', 'Neutral', 'Somewhat unfamiliar', 'Entirely unfamiliar' ]) }}
+    </div>
+
+    <div>
+      <p>How would you describe your overall experience with systems that provide recommendations?</p>
+      {{ likert('recommender_experience', [ 'Excellent', 'Good', 'Neutral', 'Poor', 'Terrible' ]) }}
+    </div>
+
+    <div>
+      <p>How confident are you that a system will provide matching recommendations to you?</p>
+      {{ likert('system_confidence', [ 'Highly confident', 'Somewhat confident', 'Neutral', 'Somewhat unconfident', 'Highly unconfident' ]) }}
+    </div>
+
+  </form>
+  <a href="{{ url_for('cold_start') }}" class="button" id="next">Next</a>
+
+  <script>
+    const BACKGROUND_KEY = 'background';
+    const DEMOGRAPHICS_KEY = 'demographics';
+
+    const nextButton = document.getElementById('next');
+
+    (function init() {
+      const sessionData = sessionStorage.getItem(BACKGROUND_KEY);
+      if (sessionData) {
+        try {
+          const data = JSON.parse(sessionData);
+          for (let key in data) {
+            document.querySelector(`[name="${key}"][value="${data[key]}"]`).checked = true;
+          }
+        } catch (err) {
+          // Ignore
+        }
+      }
+      refreshButtonState();
+    })()
+
+    nextButton.addEventListener('click', (e) => {
+      e.preventDefault();
+      if (formIsValid()) {
+        const data = { };
+        document.querySelectorAll('input[type="radio"]:checked').forEach((radio) => data[radio.name] = radio.value)
+        sessionStorage.setItem(BACKGROUND_KEY, JSON.stringify(data));
+        const demographics = JSON.parse(sessionStorage.getItem(DEMOGRAPHICS_KEY));
+        fetch(`{{ url_for('post_demographics_for_user', uid = uid) }}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ background: data, demographics }),
+        })
+          .then((res) => {
+            if (res.status > 399) {
+              throw new Error('Failed to submit data');
+            }
+          })
+          .then(() => location = `{{ url_for('cold_start') }}`)
+          .catch((err) => {
+            console.info(err);
+          });
+      }
+    });
+
+    function formIsValid() {
+      return document.querySelectorAll('input[type="radio"]:checked').length === document.querySelectorAll('p').length;
+    }
+
+    function refreshButtonState() {
+      if (formIsValid()) {
+        nextButton.classList.remove('disabled');
+      } else {
+        nextButton.classList.add('disabled');
+      }
+    }
+
+    document.querySelectorAll('input[type="radio"]').forEach((elem) => elem.addEventListener('change',
+      refreshButtonState));
+  </script>
+</body>
+
+</html>

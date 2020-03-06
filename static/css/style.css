@@ -1,0 +1,174 @@
+body {
+  background-color: #ffffff;
+  font-family: 'LMU Compatil Fact', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  margin: 0;
+}
+
+.navbar {
+  background-color: #009440;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: .25rem;
+}
+
+.navbar a {
+  color: #ffffff;
+  background-color: rgba(0, 0, 0, .1);
+  padding: .25rem .5rem;
+  margin: .25rem;
+  border-radius: 4px;
+  text-decoration: none;
+  opacity: .5;
+  justify-self: flex-start;
+}
+
+.navbar a:hover {
+  opacity: 1;
+}
+
+.navbar h1 {
+  font-size: 1rem;
+  color: #ffffff;
+  padding: 0;
+  margin: .5rem;
+}
+
+button, .button {
+  display: inline-block;
+  background-color: #009440;
+  padding: .5rem 1rem;
+  color: #ffffff;
+  font-weight: bold;
+  font-size: 80%;
+  text-decoration: none;
+  text-transform: uppercase;
+  border-radius: 4px;
+  margin: 1rem;
+  width: auto;
+  text-align: center;
+  min-width: 12rem;
+  border: none;
+}
+
+button:disabled,
+button.disabled,
+.button:disabled,
+.button.disabled {
+  opacity: .5;
+}
+
+p {
+  margin: 1rem;
+  padding: 0;
+}
+
+h1, h2 {
+  padding: 0;
+  margin: 1rem;
+}
+
+
+
+form, .container {
+  background-color: #f8f8f8;
+  border: thin solid #dddddd;
+  margin: 1rem auto;
+  padding: .5rem;
+  max-width: 64rem;
+}
+
+form div {
+  margin-bottom: 1rem;
+}
+
+label {
+  display: flex;
+  margin: .25rem 0;
+  padding: .5rem;
+  font-weight: bold;
+}
+
+label span {
+  width: 12rem;
+  max-width: 50%;
+}
+
+label span + * {
+  flex: 1;
+  padding: .25rem;
+  border: thin solid #dddddd;
+}
+
+.likert-scales {
+  font-weight: bold;
+}
+
+.likert-scale {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  margin-bottom: 2rem;
+  margin-top: -1rem;
+  border-bottom: thin solid #dddddd;
+}
+
+.likert-scale label {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  font-weight: normal;
+}
+
+.likert-scale label:hover {
+  background-color: rgba(0, 0, 0, .1);
+}
+
+.container {
+  display: flex;
+  flex-wrap: wrap;
+  max-width: 48rem;
+  margin: 0 auto;
+  justify-content: center;
+}
+
+.container.loading::before {
+  content: 'Loading...'
+}
+
+.container label {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: center;
+}
+
+.movie-card span {
+  display: block;
+  text-align: center;
+}
+
+.movie-card img {
+  display: block;
+  width: 12rem;
+}
+
+.movie-card {
+  margin: .5rem;
+  background-color: #ffffff;
+  padding: .5rem;
+  box-shadow:
+    0 1px 6px rgba(0, 0, 0, .18),
+    0 2px 12px rgba(0, 0, 0, .12),
+    0 3px 24px rgba(0, 0, 0, .06);
+  transition: box-shadow .25s;
+  user-select: none;
+
+}
+
+.movie-card.selected {
+  background-color: #009440;
+  color: #ffffff;
+  box-shadow: none;
+}

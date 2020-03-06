@@ -1,0 +1,16 @@
+{% from 'util/navbar.html' import navbar %}
+<!DOCTYPE html>
+<html>
+    {% include 'util/head.html' %}
+<body>
+        {{ navbar('system_feedback', 'post_study_questionnaire') }}
+        <p>
+          Below you find several movie recommendations as well as explanations
+          why the have been recommended.
+        </p>
+        <p>
+          Select
+        </p>
+        <a href="{{ url_for('post_study_questionnaire') }}" class="button">Start</a>
+</body>
+</html>

@@ -1,0 +1,9 @@
+{% macro likert(name, labels = [ 'Strongly disagree', 'Somewhat disagree', 'Neutral', 'Somewhat agree', 'Strongly agree' ]) -%}
+<div class="likert-scale">
+  {% for label in labels %}
+  <label>
+    <input type="radio" name="{{ name }}" value="{{ loop.index }}">{{ label }}
+  </label>
+  {% endfor %}
+</div>
+{%- endmacro %}
