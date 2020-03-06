@@ -16,17 +16,14 @@ def ndcg(hit_vec):
     return np.sum(ndcg_vec)
 
 
-def metrics(epoch, model, dataset, train_args, rec_args):
+def metrics(epoch, model, test_loader, path_index, train_args, rec_args):
     HR, NDCG, losses = [], [], []
 
-    test_loader = DataLoader(dataset.data.test_user_pos_neg_pair[0], shuffle=True, batch_size=train_args['batch_size'])
     test_bar = tqdm.tqdm(test_loader)
     for user_pos_neg_pair_batch in test_bar:
         u_nid, pos_i_nid, neg_i_nid = user_pos_neg_pair_batch.T
         occ_nid = np.concatenate((u_nid, pos_i_nid, neg_i_nid))
-        path_index_batch = torch.from_numpy(dataset.data.path_np[0][:, np.isin(dataset.data.path_np[0][-1, :], occ_nid)]).to(
-            train_args['device'])
-        propagated_node_emb = model(model.node_emb.weight, path_index_batch)[0]
+        propagated_node_emb = model(model.node_emb.weight, path_index)[0]
         u_nid, pos_i_nid, neg_i_nid = u_nid.to(train_args['device']), pos_i_nid.to(train_args['device']), neg_i_nid.to(train_args['device'])
         u_node_emb, pos_i_node_emb, neg_i_node_emb = propagated_node_emb[u_nid], propagated_node_emb[pos_i_nid], \
                                                      propagated_node_emb[neg_i_nid]

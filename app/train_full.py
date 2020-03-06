@@ -22,7 +22,7 @@ parser.add_argument("--dataset_name", type=str, default='1m', help="")
 parser.add_argument("--num_core", type=int, default=10, help="")
 parser.add_argument("--step_length", type=int, default=2, help="")
 parser.add_argument("--train_ratio", type=float, default=0.8, help="")
-parser.add_argument("--debug", default=0.04, help="")
+parser.add_argument("--debug", default=0.01, help="")
 
 # Model params
 # Model params
@@ -142,12 +142,12 @@ if __name__ == '__main__':
             optimizer.zero_grad()
 
             epoch_losses.append(loss.cpu().item())
-            train_bar.set_description('Epoch {}: loss {}'.format(epoch, np.mean(epoch_losses)))
+            train_bar.set_description('Epoch {}: loss {:.3f}'.format(epoch, np.mean(epoch_losses)))
 
         model.eval()
         HR, NDCG, loss = metrics(epoch, model, test_dataloader, path_index, train_args, rec_args)
 
-        print('Epoch: {}, HR: {}, NDCG: {}, Loss: {}'.format(epoch, HR, NDCG, loss))
+        print('Epoch: {}, HR: {:.3f}, NDCG: {:.3f}, Loss: {}'.format(epoch, HR, NDCG, loss))
 
     if torch.cuda.is_available():
         torch.cuda.synchronize()
