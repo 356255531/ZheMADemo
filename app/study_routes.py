@@ -56,7 +56,7 @@ def cold_start():
         return redirect(url_for('introduction'))
     return render_template('study/05-cold-start.html',
         uid = uid,
-        threshold = 25,
+        threshold = 1,
         systems = list(SYSTEMS.values()))
 
 
@@ -141,11 +141,11 @@ def get_movie_recommendations_for_user(uid, system):
     elif system == SYSTEMS['BENCHMARK_1']:
         # TODO
         recommendations = [ ]
-        return jsonify([ { 'id': 0, 'image': 'https://m.media-amazon.com/images/M/MV5BMDU2ZWJlMjktMTRhMy00ZTA5LWEzNDgtYmNmZTEwZTViZWJkXkEyXkFqcGdeQXVyNDQ2OTk4MzI@._V1_SX300.jpg', 'title': 'Toy Story' } ])
+        return jsonify([ { 'id': 0, 'image': 'https://m.media-amazon.com/images/M/MV5BMDU2ZWJlMjktMTRhMy00ZTA5LWEzNDgtYmNmZTEwZTViZWJkXkEyXkFqcGdeQXVyNDQ2OTk4MzI@._V1_SX300.jpg', 'title': 'Toy Story 2' } ])
     elif system == SYSTEMS['BENCHMARK_2']:
         # TODO
         recommendations = [ ]
-        return jsonify([ { 'id': 0, 'image': 'https://m.media-amazon.com/images/M/MV5BMDU2ZWJlMjktMTRhMy00ZTA5LWEzNDgtYmNmZTEwZTViZWJkXkEyXkFqcGdeQXVyNDQ2OTk4MzI@._V1_SX300.jpg', 'title': 'Toy Story' } ])
+        return jsonify([ { 'id': 0, 'image': 'https://m.media-amazon.com/images/M/MV5BMDU2ZWJlMjktMTRhMy00ZTA5LWEzNDgtYmNmZTEwZTViZWJkXkEyXkFqcGdeQXVyNDQ2OTk4MzI@._V1_SX300.jpg', 'title': 'Toy Story 3' } ])
     else:
         return jsonify({ 'error': 'System %s not available' % system }, 404)
     return jsonify(recommendations)
