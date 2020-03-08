@@ -24,8 +24,8 @@
         const SYSTEMS = [ {% for sys in systems %} '{{ sys }}', {% endfor %} ].sort(() => Math.random() > .5 ? 1 : -1);
 
         const container = document.getElementById('container');
-        const moviePreferences = JSON.parse(sessionStorage.getItem(MOVIES_SSKEY) || '{ }');
 
+        let moviePreferences = JSON.parse(sessionStorage.getItem(MOVIES_SSKEY) || '{ }');
         let system = null;
         let remainingMovies = [ ];
 
@@ -53,7 +53,8 @@
                 system = SYSTEMS.pop();
                 console.info('Transitioning to', system);
                 remainingMovies = [ ];
-                refresh();
+                moviePreferences = { };
+                loadMoreMovies();
             }
         }
 
