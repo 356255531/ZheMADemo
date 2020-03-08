@@ -2,9 +2,12 @@ __model__ = 'PAGAT'
 
 import numpy as np
 import torch
+from torch.utils.data import DataLoader
 from torch_geometric.datasets import MovieLens
-from torch_geometric import utils
+from torch_geometric.utils import path
 import os
+import itertools
+import pandas as pd
 
 from .pagat import PAGATNet
 from .utils import get_folder_path
@@ -37,8 +40,6 @@ class PGATRecSys(object):
 
         self.dataset = MovieLens(**dataset_args)
         self.data = self.dataset.data.to(device_args['device'])
-        path_index_np = path.join(data.edge_index.cpu().numpy(), path_length=2)
-        path_index = torch.from_numpy(path_index_np).to(train_args['device'])
 
         model_path = model_args['model_path']
         model_path = os.path.join(model_path, 'weights{}.pkl'.format(self.dataset.build_suffix()))
@@ -75,7 +76,7 @@ class PGATRecSys(object):
         """
         Build user profiles given the historical user interactions
         :param iids: user selected item ids, list
-        :param demographic_info: (gender, occupation), tuple
+        :param demographic_info: (age, gender, occupation), tuple
         :return:
         """
         self.base_iids = iids
@@ -84,38 +85,37 @@ class PGATRecSys(object):
         self.new_user_nid = self.model.node_emb.weight.shape[0]
 
         new_user_gender_nid = self.data.e2nid[0]['gender'][demographic_info[0]]
-        new_user_occ_nid = self.data.e2nid[0]['occ'][str(demographic_info[1])]
+        new_user_occ_nid = self.data.e2nid[0]['occ'][int(demographic_info[1])]
         i_nids = [self.data.e2nid[0]['iid'][iid] for iid in iids]
         row = i_nids + [new_user_gender_nid, new_user_occ_nid]
         col = [self.new_user_nid for i in range(len(iids) + 2)]
-        self.new_edge_index = torch.from_numpy(np.array([row, col])).long().to(self.device_args['device'])
+        self.new_edge_index = torch.from_numpy(np.array([row + col, col + row])).long().to(self.device_args['device'])
+        edge_index = torch.cat([self.data.edge_index, self.new_edge_index], dim=1)
 
         # Build path begins and ends with
-        new_path_np = utils.path.join(self.data.edge_index, self.new_edge_index)
-        self.new_path = torch.from_numpy(new_path_np).long().to(self.device_args['device'])
+        path_index_np = path.join(edge_index.cpu().numpy(), target=[self.new_user_nid])
+        path_index = torch.from_numpy(path_index_np).to(self.device_args['device'])
 
         # Get new user embedding by applying message passing
         self.new_user_emb = torch.nn.Embedding(1, self.model.node_emb.weight.shape[1], max_norm=1, norm_type=2.0)
         new_node_emb = torch.cat((self.model.node_emb.weight, self.new_user_emb.weight), dim=0)
-        self.propagated_new_user_emb = self.model(new_node_emb, self.new_path)[0][-1, :]
+        self.propagated_new_user_emb = self.model(new_node_emb, path_index)[0][-1, :]
         print('user building done...')
 
-    def get_recommendations(self,rs_proportion):
-
+    def get_recommendations(self, rs_proportion):
         iids = self.get_top_n_popular_items(200).iid
         iids = [iid for iid in iids if iid not in self.recommended]
-        rec_iids = [iid for iid in iids if iid not in self.base_iids]
-        rec_nids = [self.data.e2nid[0]['iid'][iid] for iid in rec_iids]
+        if 'based_iids' in locals():
+            iids = [iid for iid in iids if iid not in self.base_iids]
+        rec_nids = [self.data.e2nid[0]['iid'][iid] for iid in iids]
 
-        mask = np.isin(self.data.path_np[0][-1, :], rec_nids)
-        full_path_index = torch.from_numpy(self.data.path_np[0][:, mask]).to(self.device_args['device'])
-        propagated_node_emb = self.model(self.model.node_emb.weight, full_path_index)[0]
+        path_index = torch.from_numpy(path.join(self.data.edge_index.cpu().numpy(), target=rec_nids)).to(self.device_args['device'])
+        propagated_node_emb = self.model(self.model.node_emb.weight, path_index)[0]
         rec_item_emb = propagated_node_emb[rec_nids, :]
         est_feedback = torch.sum(self.propagated_new_user_emb * rec_item_emb, dim=1).reshape(-1).cpu().detach().numpy()
         rec_iid_idx = [i for i in np.argsort(est_feedback)]
-        # [:self.num_recs]
 
-        rec_iids = [rec_iids[idx] for idx in rec_iid_idx]
+        rec_iids = [iids[idx] for idx in rec_iid_idx]
         # how to know what is the explanation type of rec_iids
 
 
@@ -164,9 +164,15 @@ class PGATRecSys(object):
         movie_nid = self.data.e2nid[0]['iid'][iid]
         row = [movie_nid, self.new_user_nid]
         col = [self.new_user_nid, movie_nid]
-        expl_edge_index = torch.from_numpy(np.array([row, col])).long().to(self.device_args['device'])
-        exist_edge_index = torch.cat((self.data.edge_index, self.new_edge_index), dim=1)
-        new_path_np = utils.path.join(exist_edge_index, expl_edge_index)
+        expl_edge_index_np = np.array([row, col])
+        edge_index = torch.cat(
+            (
+                self.data.edge_index,
+                self.new_edge_index,
+                torch.from_numpy(expl_edge_index_np).long().to(self.device_args['device'])
+            ),
+            dim=1)
+        new_path_np = path.join(edge_index.cpu().numpy(), row)
         new_path = torch.from_numpy(new_path_np).long().to(self.device_args['device'])
         new_node_emb = torch.cat((self.model.node_emb.weight, self.new_user_emb.weight), dim=0)
         att = self.model.forward(new_node_emb, new_path)[1]

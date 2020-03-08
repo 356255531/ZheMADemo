@@ -19,6 +19,7 @@ parser = argparse.ArgumentParser()
 # Dataset params
 parser.add_argument("--dataset", type=str, default='movielens', help="")
 parser.add_argument("--dataset_name", type=str, default='1m', help="")
+parser.add_argument("--directed", type=str, default=False, help="")
 parser.add_argument("--num_core", type=int, default=10, help="")
 parser.add_argument("--step_length", type=int, default=2, help="")
 parser.add_argument("--train_ratio", type=float, default=None, help="")
@@ -62,7 +63,7 @@ else:
 ########################## Define parameters ##########################
 dataset_args = {
     'root': data_folder, 'dataset': args.dataset, 'name': args.dataset_name,
-    'num_core': args.num_core, 'step_length': args.step_length, 'train_ratio': args.train_ratio,
+    'directed': args.directed, 'num_core': args.num_core, 'step_length': args.step_length, 'train_ratio': args.train_ratio,
     'debug': args.debug
 }
 model_args = {

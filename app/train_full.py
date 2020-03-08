@@ -22,9 +22,8 @@ parser.add_argument("--dataset_name", type=str, default='1m', help="")
 parser.add_argument("--num_core", type=int, default=10, help="")
 parser.add_argument("--step_length", type=int, default=2, help="")
 parser.add_argument("--train_ratio", type=float, default=0.8, help="")
-parser.add_argument("--debug", default=0.01, help="")
+parser.add_argument("--debug", default=0.04, help="")
 
-# Model params
 # Model params
 parser.add_argument("--heads", type=int, default=4, help="")
 parser.add_argument("--dropout", type=float, default=0.6, help="")
@@ -39,7 +38,7 @@ parser.add_argument("--epochs", type=int, default=20, help="")
 parser.add_argument("--opt", type=str, default='adam', help="")
 parser.add_argument("--loss", type=str, default='mse', help="")
 parser.add_argument("--batch_size", type=int, default=81920, help="")
-parser.add_argument("--lr", type=float, default=1e-4, help="")
+parser.add_argument("--lr", type=float, default=1e-3, help="")
 parser.add_argument("--weight_decay", type=float, default=0, help="")
 parser.add_argument("--early_stopping", type=int, default=40, help="")
 
@@ -147,13 +146,13 @@ if __name__ == '__main__':
         model.eval()
         HR, NDCG, loss = metrics(epoch, model, test_dataloader, path_index, train_args, rec_args)
 
-        print('Epoch: {}, HR: {:.3f}, NDCG: {:.3f}, Loss: {}'.format(epoch, HR, NDCG, loss))
+        print('Epoch: {}, HR: {:.3f}, NDCG: {:.3f}, Loss: {:.3f}'.format(epoch, HR, NDCG, loss))
 
     if torch.cuda.is_available():
         torch.cuda.synchronize()
     t_end = time.perf_counter()
 
-    print('Duration: {}, HR: {}, NDCG: {}, loss: {}'.format(t_start - t_end, np.mean(HR_history), np.mean(NDCG_history), np.mean(loss_history)))
+    print('Duration: {:.3f}, HR: {:.3f}, NDCG: {:.3f}, loss: {:.3f}'.format(t_start - t_end, np.mean(HR_history), np.mean(NDCG_history), np.mean(loss_history)))
 
     if not os.path.isdir(weights_folder):
         os.mkdir(weights_folder)

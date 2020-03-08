@@ -136,7 +136,7 @@ def get_movie_recommendations_for_user(uid, system):
     n = request.args.get('count') or 10
 
     if system == SYSTEMS['OUR_SYSTEM']:
-        # recommendations = recsys.get_recommendations({ 'IUI': 4, 'UIU':  5, 'IUDD': 3, 'UICC': 1 })
+        recommendations = recsys.get_recommendations({'IUI': 3, 'UIU':  3, 'IUDD': 3, 'UICC': 3})
         return jsonify([ { 'id': 0, 'image': 'https://m.media-amazon.com/images/M/MV5BMDU2ZWJlMjktMTRhMy00ZTA5LWEzNDgtYmNmZTEwZTViZWJkXkEyXkFqcGdeQXVyNDQ2OTk4MzI@._V1_SX300.jpg', 'title': 'Toy Story' } ])
     elif system == SYSTEMS['BENCHMARK_1']:
         # TODO
