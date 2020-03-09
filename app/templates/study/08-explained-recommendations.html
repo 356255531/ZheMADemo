@@ -28,15 +28,10 @@
     <script>
         const MOVIES_SSKEY = 'movies';
         const EXPL_SSKEY = 'movies';
-        const CONTINUE_THRESHOLD = {{ threshold or 10 }};
+        const CONTINUE_THRESHOLD = 100; {{ threshold or 10 }};
         const POST_MOVIES_URL = `{{ url_for('post_movie_preferences_for_user', uid = uid, system = system or 'none') }}`;
-        const GET_NEW_MOVIES_URL = `{{ get_movies_url }}`;
-        const SYSTEM = `{{ system or 'none' }}`;
-
-        const container = document.getElementById('container');
-        const movies = JSON.parse(sessionStorage.getItem(MOVIES_SSKEY) || '{ }');
-        const explanations = JSON.parse(sessionStorage.getItem(EXPL_SSKEY) || '{ }');
-
+        const POST_EXPL_URL = `{{ url_for('post_explanation_preferences_for_user', uid = uid, system = system or 'none') }}`;
+        const GET_NEW_MOVIES_URL = `{{ url_for('get_movie_recommendations_for_user', uid = uid, system = 'our-system') }}`;
         const STAGE = {
             NONE: 0x00,
             MOVIE: 0x01,
@@ -44,78 +39,103 @@
             LOADING: 0x04,
             ERROR: 0x08,
         };
+
+        const container = document.getElementById('container');
+        // TODO continue recording and sending movie preferences
+        const moviePreferences = JSON.parse(sessionStorage.getItem(MOVIES_SSKEY) || '{ }');
+        const explanationPreferences = JSON.parse(sessionStorage.getItem(EXPL_SSKEY) || '{ }');
+
         let stage = STAGE.NONE;
+        let  remainingMovies = [ ];
 
+        function handleError (err) {
+            console.error(err);
+            stage = STAGE.ERROR;
+            container.classList.remove('loading');
+            container.innerText = 'Failed to load. Please ask the supervisor for help.'
+        }
 
-
-        function loadNewMovie () {
-            // If vote is expected or already loading, skip
-            if (stage === STAGE.MOVIE || stage === STAGE.LOADING) {
+        async function loadNewMovies () {
+            // If already loading, skip
+            if (stage === STAGE.LOADING) {
                 return;
             }
-            stage = STAGE.NONE;
+            stage = STAGE.LOADING;
 
-            // Clear the page
-            container.innerHTML = '';
-            container.classList.add('loading');
-
-            const hits = Object.keys(movies).map((key) => movies[key]).filter((a) => a).length;
-            if (hits >= CONTINUE_THRESHOLD) {
-                // When we have n positive hits, continue with data submission
-                sessionStorage.setItem(MOVIES_SSKEY, JSON.stringify(movies));
-
-                // Send data to API
-                fetch(POST_MOVIES_URL, {
-                    method: 'POST',
-                    body: JSON.stringify(movies),
-                    headers: { 'Content-Type': 'application/json' },
-                })
-                    .then(() => {
-                        // Clear the storage
-                        sessionStorage.setItem(MOVIES_SSKEY, '{ }');
-                        // Move on to the next page
-                        location = `{{ url_for('post_study_questionnaire') }}`
-                    })
-                    .catch((err) => console.error(err));
+            // Get a new movie to rate
+            const res = await fetch(GET_NEW_MOVIES_URL, { method: 'GET' });
+            if (res.status < 400) {
+                const data = await res.json();
+                remainingMovies = data;
+                showNext();
             } else {
-                stage = STAGE.LOADING;
-                // Get a new movie to rate
-                fetch(GET_NEW_MOVIES_URL, { method: 'GET' })
-                    .then((res) => res.json())
-                    .then(({ id, title, image, explanation }) => {
-                        stage = STAGE.MOVIE;
-                        // Show the correct inputs
-                        document.querySelector('.tinder-buttons').classList.remove('hidden');
-                        document.querySelector('.rating-scale').classList.add('hidden');
+                handleError();
+            }
+        }
 
-                        container.id = id;
-                        // Create the necessary elements
-                        const label = document.createElement('label');
-                        label.classList.add('movie-card');
-                        const img = document.createElement('img');
-                        img.src = image;
-                        const span = document.createElement('span');
-                        const expl = document.createElement('p');
-                        // Set the correct instruction heading
-                        document.querySelector('h3').innerText = 'Are you interested in or did you enjoy watching this movie?';
-                        // Generate the explanation
-                        expl.appendChild(document.createTextNode(explanation || 'TEST'));
-                        expl.classList.add(('hidden'));
-                        expl.classList.add('explanation')
-                        // Append everything
-                        span.appendChild(document.createTextNode(title));
-                        label.appendChild(img);
-                        label.appendChild(span);
-                        container.appendChild(label);
-                        container.appendChild(expl);
-                        container.classList.remove('loading');
-                    })
-                    .catch((err) => {
-                        stage = STAGE.ERROR;
-                        container.classList.remove('loading');
-                        container.innerText = 'Failed to load. Please ask the supervisor for help.'
-                        console.error(err);
-                    });
+        async function showNext () {
+            try {
+                if (remainingMovies.length) {
+                    // Clear the page
+                    container.innerHTML = '';
+                    container.classList.add('loading');
+
+                    const allComplete =
+                        // Has preferences for all n TODO explanation types
+                        Object.keys(explanationPreferences).length === 3 &&
+                        // and each has at least THRESHOLD votes
+                        !Object.keys(explanationPreferences)
+                            .map((type) => Object.keys(explanationPreferences[type]).length >= CONTINUE_THRESHOLD)
+                            .some((b) => !b);
+
+                    if (allComplete) {
+                        // When we have n positive hits, continue with data submission
+                        sessionStorage.setItem(EXPL_SSKEY, JSON.stringify(explanationPreferences));
+                        // Send data to API
+                        await fetch(POST_EXPL_URL, {
+                            method: 'POST',
+                            body: JSON.stringify(explanationPreferences),
+                            headers: { 'Content-Type': 'application/json' },
+                        });
+                        // Clear the storage
+                        sessionStorage.setItem(EXPL_SSKEY, '{ }');
+                        // location = `{{ url_for('post_study_questionnaire') }}`
+                        return;
+                    }
+
+                    stage = STAGE.MOVIE;
+                    const { id, title, image, explanation} = remainingMovies.pop();
+                    // Show the correct inputs
+                    document.querySelector('.tinder-buttons').classList.remove('hidden');
+                    document.querySelector('.rating-scale').classList.add('hidden');
+
+                    container.id = id;
+                    // Create the necessary elements
+                    const label = document.createElement('label');
+                    label.classList.add('movie-card');
+                    const img = document.createElement('img');
+                    img.src = image;
+                    const span = document.createElement('span');
+                    const expl = document.createElement('p');
+                    // Set the correct instruction heading
+                    document.querySelector('h3').innerText = 'Are you interested in or did you enjoy watching this movie?';
+                    // Generate the explanation
+                    expl.appendChild(document.createTextNode(explanation.text || 'TEST'));
+                    expl.dataset.explanationType = explanation.type;
+                    expl.classList.add(('hidden'));
+                    expl.classList.add('explanation')
+                    // Append everything
+                    span.appendChild(document.createTextNode(title));
+                    label.appendChild(img);
+                    label.appendChild(span);
+                    container.appendChild(label);
+                    container.appendChild(expl);
+                    container.classList.remove('loading');
+                } else {
+                    loadNewMovies();
+                }
+            } catch (err) {
+                handleError(err);
             }
         }
 
@@ -131,14 +151,14 @@
         /** Call when the user accepts the recommendation */
         function accept () {
             const id = container.id;
-            movies[id] = true;
+            moviePreferences[id] = true;
             showExplanation();
         }
 
         /** Call when the user rejects the recommendation */
         function reject () {
             const id = container.id;
-            movies[id] = true;
+            moviePreferences[id] = true;
             showExplanation();
         }
 
@@ -156,12 +176,16 @@
         // Input method for rating the explanation: Button
         document.querySelectorAll('.rating-scale button').forEach((btn, i, btns) => {
             btn.addEventListener('click', () => {
-                explanations['TODO Unique key for move and explanation'] = i;
-                loadNewMovie();
+                const explanationType = document.querySelector('.explanation').dataset.explanationType;
+                if (!explanationPreferences[explanationType]) {
+                    explanationPreferences[explanationType] = { };
+                }
+                explanationPreferences[explanationType][container.id] = i;
+                loadNewMovies();
             });
         });
 
-        loadNewMovie();
+        loadNewMovies();
     </script>
 </body>
 </html>

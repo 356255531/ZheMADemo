@@ -82,13 +82,9 @@ def recommendations():
     if uid is None:
         return redirect(url_for('introduction'))
 
-    system = SYSTEMS['OUR_SYSTEM']
-
     return render_template('study/08-explained-recommendations.html',
         uid = uid,
-        get_movies_url = url_for('get_movie_recommendations_for_user', uid = uid, system = system),
         threshold = 25,
-        system = system,
     )
 
 
@@ -136,8 +132,13 @@ def get_movie_recommendations_for_user(uid, system):
     n = request.args.get('count') or 10
 
     if system == SYSTEMS['OUR_SYSTEM']:
-        recommendations = recsys.get_recommendations({'IUI': 3, 'UIU':  3, 'IUDD': 3, 'UICC': 3})
-        return jsonify([ { 'id': 0, 'image': 'https://m.media-amazon.com/images/M/MV5BMDU2ZWJlMjktMTRhMy00ZTA5LWEzNDgtYmNmZTEwZTViZWJkXkEyXkFqcGdeQXVyNDQ2OTk4MzI@._V1_SX300.jpg', 'title': 'Toy Story' } ])
+        # recommendations = recsys.get_recommendations({'IUI': 3, 'UIU':  3, 'IUDD': 3, 'UICC': 3})
+        return jsonify([ {
+            'id': 0,
+            'image': 'https://m.media-amazon.com/images/M/MV5BMDU2ZWJlMjktMTRhMy00ZTA5LWEzNDgtYmNmZTEwZTViZWJkXkEyXkFqcGdeQXVyNDQ2OTk4MzI@._V1_SX300.jpg',
+            'title': 'Toy Story',
+            'explanation': { 'type': 'IUI', 'text': 'Because of reasons' }
+        } ])
     elif system == SYSTEMS['BENCHMARK_1']:
         # TODO
         recommendations = [ ]
@@ -167,7 +168,7 @@ def post_demographics_for_user(uid):
     return make_response(jsonify({ 'success': True }), 202)
 
 
-@app.route('/api/user/<uid>/preferences', methods = [ 'POST' ])
+@app.route('/api/user/<uid>/movies/preferences', methods = [ 'POST' ])
 def post_movie_preferences_for_user(uid):
     """
     API endpoint for incrementally refining the user profile.
@@ -179,6 +180,13 @@ def post_movie_preferences_for_user(uid):
     # TODO recsys.build_user(...)
     return make_response(jsonify({ 'error': 'Not Implemented'}), 501)
 
+
+@app.route('/api/user/<uid>/explanations/preferences', methods = [ 'POST' ])
+def post_explanation_preferences_for_user(uid):
+    """
+    API endpoint for posting user explanation preferences.
+    """
+    pass
 
 @app.route('/api/user/<uid>/questionnaires/post', methods = [ 'POST' ])
 def post_questionnaire(uid):

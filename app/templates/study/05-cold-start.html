@@ -36,6 +36,8 @@
 
         /** Transition to next system or next page if all systems are covered */
         async function switchSystem () {
+            console.info(SYSTEMS);
+
             if (SYSTEMS.length < 1) {
                 console.info('All systems completed, moving to next page.');
                 // Send data to API
