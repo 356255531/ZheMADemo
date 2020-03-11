@@ -228,3 +228,31 @@ label span + * {
 .hidden {
   display: none !important;
 }
+
+.legal-info {
+  display: flex;
+  flex-direction: row;
+}
+
+.statutory-disclosure,
+.data-consent {
+  display: block;
+  padding: 1rem;
+  font-size: 80%;
+  flex: 1;
+}
+
+.statutory-disclosure h3,
+.data-consent h3,
+.statutory-disclosure h4,
+.data-consent h4,
+.statutory-disclosure h5,
+.data-consent h5 {
+  padding: 0;
+  margin: 0;
+}
+
+.statutory-disclosure pre,
+.data-consent pre {
+  font-family: inherit;
+}
