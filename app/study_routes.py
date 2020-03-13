@@ -8,7 +8,9 @@ from .model_utils import get_top_movie_ids, \
 from .db_utils import save_demographics_to_db, \
                       save_background_to_db, \
                       save_user_preferences_to_db, \
-                      save_questionnaire_to_db
+                      save_explanation_preference_to_sqlite, \
+                      save_questionnaire_to_db, \
+                      load_demographics_from_db
 from .constants import SYSTEMS
 
 # Template renders
@@ -56,7 +58,7 @@ def cold_start():
         return redirect(url_for('introduction'))
     return render_template('study/05-cold-start.html',
         uid = uid,
-        threshold = 15,
+        threshold = 10,
         systems = list(SYSTEMS.values()))
 
 
@@ -184,8 +186,12 @@ def post_movie_preferences_for_user(uid):
     """
     preference_data = request.json
     save_user_preferences_to_db(uid, preference_data)
-    # TODO recsys.build_user(...)
-    return make_response(jsonify({ 'error': 'Not Implemented'}), 501)
+    db_data = load_demographics_from_db(uid)
+    if db_data is None:
+        return make_response(jsonify({ 'error': 'User not found' }), 404)
+    db_uid, age, gender, occupation = db_data
+    recsys.build_user(preference_data.keys(), (gender, occupation))
+    return make_response(jsonify({ 'success': True }), 202)
 
 
 @app.route('/api/user/<uid>/explanations/preferences', methods = [ 'POST' ])
@@ -193,6 +199,7 @@ def post_explanation_preferences_for_user(uid):
     """
     API endpoint for posting user explanation preferences.
     """
+    # TODO
     pass
 
 @app.route('/api/user/<uid>/questionnaires/post', methods = [ 'POST' ])

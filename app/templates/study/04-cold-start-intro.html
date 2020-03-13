@@ -3,23 +3,34 @@
 <html>
     {% include 'util/head.html' %}
 <body>
-        {{ navbar('index', 'demographics') }}
+        {{ navbar('background', 'cold_start') }}
 
-        <h1>Movie Recommendations &ndash; User Study</h1>
         <p>
-            Welcome and thank you for participating in our user study on movie recommendation systems.<br>
-            In this study you will receive some recommendation on movies you may be interested in. You will then provide feedback regarding these suggestions and the system.<br>
-            The goal is to improve recommender systems by providing transparency to you, the user.
+            Thank you for completing the background questionnaire.
         </p>
 
         <p>
-            The study will take approximately 30 minutes.<br>
-            If you have questions at any point during the study, feel free to ask the supervisor.
+            In the following section, we will present you with a series of movies.
+            For each of these movies, indicate whether you either have watched and
+            enjoyed the movie or, if you have not watched the movie, whether you
+            would be interested in it.
         </p>
 
-        <p>By participating in this study you agree to the data protection policy shown below.</p>
+        <p>
+            You can use the buttons provided to indicate your choice. <br>Alternatively
+            you can use the <code>E</code> key to state that you are not interested
+            in the movie (Exclude) or the <code>I</code> key to  indicate that you are
+            <em>i</em>nterested (Include).<br>
+            If you are on a touch device, you can also swipe an item to the right to
+            indicate interest and to the left to indicate that you are not interested.
+        </p>
 
-        <a href="{{ url_for('demographics') }}" class="button">Start</a>
+        <p>
+            Please do not think to long on a choice but rather choose based on
+            your first intuition
+        </p>
+
+        <a href="{{ url_for('cold_start') }}" class="button">Next</a>
 
 </body>
 </html>

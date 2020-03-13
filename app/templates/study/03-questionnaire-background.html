@@ -5,7 +5,7 @@
 {% include 'util/head.html' %}
 
 <body>
-  {{ navbar('demographics', 'cold_start') }}
+  {{ navbar('demographics', 'cold_intro') }}
 
   <h2>Please provide some information about you</h2>
 
@@ -47,7 +47,7 @@
 
   </form>
 
-  <a href="{{ url_for('cold_start') }}" class="button" id="next">Next</a>
+  <a href="{{ url_for('cold_intro') }}" class="button" id="next">Next</a>
 
   <script>
     const BACKGROUND_KEY = 'background';
@@ -88,7 +88,7 @@
               throw new Error('Failed to submit data');
             }
           })
-          .then(() => location = `{{ url_for('cold_start') }}`)
+          .then(() => location = `{{ url_for('cold_intro') }}`)
           .catch((err) => {
             console.info(err);
           });
