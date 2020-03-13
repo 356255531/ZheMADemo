@@ -16,7 +16,7 @@ from .constants import SYSTEMS
 @app.route('/introduction')
 def introduction():
     response = make_response(render_template('study/01-introduction.html'))
-    response.set_cookie('uid', str(uuid4()))
+    response.set_cookie('uid', str(uuid4()).split('-')[0])
     return response
 
 
@@ -56,7 +56,7 @@ def cold_start():
         return redirect(url_for('introduction'))
     return render_template('study/05-cold-start.html',
         uid = uid,
-        threshold = 1,
+        threshold = 15,
         systems = list(SYSTEMS.values()))
 
 
@@ -130,15 +130,22 @@ def get_movie_recommendations_for_user(uid, system):
     seen recommendations, i.e. "cold recommendations"
     """
     n = request.args.get('count') or 10
+    with_explanations = False if request.args.get('explanations') is None else True
+    print(with_explanations)
+
+    if not recsys.user_is_built:
+        return make_response(jsonify({ 'error': 'User not built.' }, 400))
 
     if system == SYSTEMS['OUR_SYSTEM']:
-        # recommendations = recsys.get_recommendations({'IUI': 3, 'UIU':  3, 'IUDD': 3, 'UICC': 3})
-        return jsonify([ {
-            'id': 0,
-            'image': 'https://m.media-amazon.com/images/M/MV5BMDU2ZWJlMjktMTRhMy00ZTA5LWEzNDgtYmNmZTEwZTViZWJkXkEyXkFqcGdeQXVyNDQ2OTk4MzI@._V1_SX300.jpg',
-            'title': 'Toy Story',
-            'explanation': { 'type': 'IUI', 'text': 'Because of reasons' }
-        } ])
+        recommendations, explanations = recsys.get_recommendations({'IUI': 3, 'UIU':  0, 'IUDD': 0, 'UICC': 0 })
+        recommendations = list(recommendations[[ 'iid', 'title' ]].to_dict(orient='index').values())
+        for rec in recommendations:
+            rec['image'] = get_movie_poster_for_id(rec['iid'])
+            rec['id']  = rec['iid']
+
+        # TODO Add explanation if requested
+
+        return jsonify(recommendations)
     elif system == SYSTEMS['BENCHMARK_1']:
         # TODO
         recommendations = [ ]

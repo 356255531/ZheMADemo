@@ -34,7 +34,10 @@ def get_dataloader(data, batch_size):
 
 
 class PGATRecSys(object):
+
     def __init__(self, num_recs, dataset_args, model_args, device_args):
+        self.user_is_built = False
+
         self.num_recs = num_recs
         self.device_args = device_args
 
@@ -100,6 +103,8 @@ class PGATRecSys(object):
         self.new_user_emb = torch.nn.Embedding(1, self.model.node_emb.weight.shape[1], max_norm=1, norm_type=2.0)
         new_node_emb = torch.cat((self.model.node_emb.weight, self.new_user_emb.weight), dim=0)
         self.propagated_new_user_emb = self.model(new_node_emb, path_index)[0][-1, :]
+
+        self.user_is_built = True
         print('user building done...')
 
     def get_recommendations(self, rs_proportion):
@@ -117,7 +122,6 @@ class PGATRecSys(object):
 
         rec_iids = [iids[idx] for idx in rec_iid_idx]
         # how to know what is the explanation type of rec_iids
-
 
         exp_tuple = [self.get_explanation(iid) for iid in rec_iids]
         exp, expl_types = [_[0] for _ in exp_tuple], [_[1] for _ in exp_tuple]

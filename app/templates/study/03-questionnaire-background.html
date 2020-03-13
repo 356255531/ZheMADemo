@@ -12,41 +12,41 @@
   <form class="likert-scales">
     <div>
       <p>How often do you watch a movie?</p>
-      {{ likert('watch_frequency', [ 'Daily', 'Multiple per week', 'Once per week', 'Once per month', 'Less frequently' ]) }}
-       
+      {{ likert('watch_frequency', [ 'Less frequently', 'Once per month', 'Once per week', 'Multiple per week', 'Daily' ]) }}
     </div>
 
     <div>
       <p>How often do you look for movie recommendations?</p>
-      {{ likert('recommendation_frequency', [ 'Daily', 'Multiple per week', 'Once per week', 'Once per month', 'Less frequently' ]) }}
+      {{ likert('recommendation_frequency', [ 'Less frequently', 'Once per month', 'Once per week', 'Multiple per week', 'Daily' ]) }}
     </div>
 
     <div>
       <p>How often do you use systems that provide recommendations?</p>
-      {{ likert('recommendation_system_frequency', [ 'Daily', 'Multiple per week', 'Once per week', 'Once per month', 'Less frequently' ]) }}
+      {{ likert('recommendation_system_frequency', [ 'Less frequently', 'Once per month', 'Once per week', 'Multiple per week', 'Daily' ]) }}
     </div>
 
     <div>
       <p>How familiar are you with recommendation services?</p>
-      {{ likert('recommendation_familiarity', [ 'Very familiar', 'Somewhat familiar', 'Neutral', 'Somewhat unfamiliar', 'Entirely unfamiliar' ]) }}
+      {{ likert('recommendation_familiarity', [ 'Entirely unfamiliar', 'Somewhat unfamiliar', 'Neutral', 'Somewhat familiar', 'Very familiar' ]) }}
     </div>
 
     <div>
       <p>How familiar are you with explainable recommendation systems?</p>
-      {{ likert('explainable_recommendation_familiarity', [ 'Very familiar', 'Somewhat familiar', 'Neutral', 'Somewhat unfamiliar', 'Entirely unfamiliar' ]) }}
+      {{ likert('explainable_recommendation_familiarity', [ 'Entirely unfamiliar', 'Somewhat unfamiliar', 'Neutral', 'Somewhat familiar', 'Very familiar' ]) }}
     </div>
 
     <div>
       <p>How would you describe your overall experience with systems that provide recommendations?</p>
-      {{ likert('recommender_experience', [ 'Excellent', 'Good', 'Neutral', 'Poor', 'Terrible' ]) }}
+      {{ likert('recommender_experience', [ 'Terrible', 'Poor', 'Neutral', 'Good', 'Excellent' ]) }}
     </div>
 
     <div>
       <p>How confident are you that a system will provide matching recommendations to you?</p>
-      {{ likert('system_confidence', [ 'Highly confident', 'Somewhat confident', 'Neutral', 'Somewhat unconfident', 'Highly unconfident' ]) }}
+      {{ likert('system_confidence', [ 'Highly unconfident', 'Somewhat unconfident', 'Neutral', 'Somewhat confident', 'Highly confident' ]) }}
     </div>
 
   </form>
+
   <a href="{{ url_for('cold_start') }}" class="button" id="next">Next</a>
 
   <script>
