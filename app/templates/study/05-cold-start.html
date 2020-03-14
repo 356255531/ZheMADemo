@@ -25,8 +25,10 @@
 
         const container = document.getElementById('container');
 
+        const URL_SYSTEM = new URLSearchParams(window.location.search).get('system') || null;
+
         let moviePreferences = JSON.parse(sessionStorage.getItem(MOVIES_SSKEY) || '{ }');
-        let system = null;
+        let system = URL_SYSTEM;
         let remainingMovies = [ ];
 
         function handleError () {
@@ -36,6 +38,14 @@
 
         /** Transition to next system or next page if all systems are covered */
         async function switchSystem () {
+            if (URL_SYSTEM) {
+                console.info('Fixed system:', URL_SYSTEM);
+                remainingMovies = [ ];
+                moviePreferences = { };
+                loadMoreMovies();
+                return;
+            }
+
             console.info(SYSTEMS);
 
             if (SYSTEMS.length < 1) {
