@@ -96,12 +96,9 @@ def get_movie_name_for_id(i):
     return movie_name
 
 
-def get_movie_poster_for_id(i):
-    movies = pd.read_csv('app/ml-1m/movies.dat', sep='::', engine='python')
-    movie_name = get_movie_name_for_id(i)
-    movie_title = movie_name[0:-7]
-    movie_title = movie_title.replace(' ','+')
-    movie_year = movie_name[-5:-1]
+def get_movie_poster(movie_df):
+    movie_title = movie_df['title']
+    movie_year = movie_df['title']
 
     movie_url = "http://www.omdbapi.com/?" + "t=" + movie_title + "&y=" + movie_year + "&apikey=" + apikey
     movie_url_no_year = "http://www.omdbapi.com/?" + "t=" + movie_title + "&apikey=" + apikey

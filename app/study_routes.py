@@ -3,7 +3,7 @@ from uuid import uuid4
 from app import app
 from .model_utils import get_top_movie_ids, \
                          get_movie_name_for_id, \
-                         get_movie_poster_for_id, \
+                         get_movie_poster, \
                          recsys
 from .db_utils import save_demographics_to_db, \
                       save_background_to_db, \
@@ -120,7 +120,7 @@ def get_top_movies():
 
     return jsonify([ {
         'title': get_movie_name_for_id(id),
-        'image': get_movie_poster_for_id(id),
+        'image': get_movie_poster(recsys.data.movies[recsys.data.movies.iid == id]),
         'id': int(id)
     } for id in ids ])
 
@@ -142,7 +142,7 @@ def get_movie_recommendations_for_user(uid, system):
         recommendations, explanations = recsys.get_recommendations({'IUI': 3, 'UIU':  0, 'IUDD': 0, 'UICC': 0 })
         recommendations = list(recommendations[[ 'iid', 'title' ]].to_dict(orient='index').values())
         for rec in recommendations:
-            rec['image'] = get_movie_poster_for_id(rec['iid'])
+            rec['image'] = gget_movie_poster(recsys.data.movies[recsys.data.movies.iid == rec['iid']])
             rec['id']  = rec['iid']
 
         # TODO Add explanation if requested
