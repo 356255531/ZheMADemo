@@ -133,16 +133,15 @@ def get_movie_recommendations_for_user(uid, system):
     """
     n = request.args.get('count') or 10
     with_explanations = False if request.args.get('explanations') is None else True
-    print(with_explanations)
 
     if not recsys.user_is_built:
-        return make_response(jsonify({ 'error': 'User not built.' }, 400))
+        return make_response(jsonify({ 'error': 'User not built.' }), 400)
 
     if system == SYSTEMS['OUR_SYSTEM']:
         recommendations, explanations = recsys.get_recommendations({'IUI': 3, 'UIU':  0, 'IUDD': 0, 'UICC': 0 })
-        recommendations = list(recommendations[[ 'iid', 'title' ]].to_dict(orient='index').values())
+        recommendations = list(recommendations[[ 'iid', 'title', 'year' ]].to_dict(orient='index').values())
         for rec in recommendations:
-            rec['image'] = gget_movie_poster(recsys.data.movies[recsys.data.movies.iid == rec['iid']])
+            rec['image'] = get_movie_poster(rec)
             rec['id']  = rec['iid']
 
         # TODO Add explanation if requested
@@ -185,12 +184,12 @@ def post_movie_preferences_for_user(uid):
     them into the user profile.
     """
     preference_data = request.json
-    save_user_preferences_to_db(uid, preference_data)
+    save_user_preferences_to_db(uid, preference_data, True)
     db_data = load_demographics_from_db(uid)
     if db_data is None:
         return make_response(jsonify({ 'error': 'User not found' }), 404)
     db_uid, age, gender, occupation = db_data
-    recsys.build_user(preference_data.keys(), (gender, occupation))
+    recsys.build_user([ int(key) for key in preference_data.keys() if preference_data[key] is True ], (gender, '%i' % occupation))
     return make_response(jsonify({ 'success': True }), 202)
 
 
@@ -199,8 +198,20 @@ def post_explanation_preferences_for_user(uid):
     """
     API endpoint for posting user explanation preferences.
     """
-    # TODO
-    pass
+    # TODO transform the request.json body to db compatible format
+    explanation_preferences = [ ]
+    movie_preferences = [ ]
+
+    save_user_preferences_to_db(uid, movie_preferences, False)
+    save_explanation_preference_to_sqlite(uid, explanation_preferences)
+
+    db_data = load_demographics_from_db(uid)
+    if db_data is None:
+        return make_response(jsonify({ 'error': 'User not found' }), 404)
+    db_uid, age, gender, occupation = db_data
+
+    recsys.build_user([ int(key) for key in movie_preferences if movie_preferences[key] is True, (gender, '%i' % occupation))
+    return make_response(jsonify({ 'success': True }), 202)
 
 @app.route('/api/user/<uid>/questionnaires/post', methods = [ 'POST' ])
 def post_questionnaire(uid):

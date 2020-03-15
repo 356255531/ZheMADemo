@@ -29,7 +29,9 @@ preference_table = 'movie_preferences'
 create_preference_table = 'CREATE TABLE IF NOT EXISTS `%s` (\
     user_id VARCHAR NOT NULL,\
     movie_id INT NOT NULL,\
-    is_preferred BOOLEAN NOT NULL DEFAULT FALSE\
+    is_preferred BOOLEAN NOT NULL DEFAULT FALSE,\
+    was_cold BOOLEAN NOT NULL DEFAULT FALSE,\
+    created TIMESTAMP DEFAULT CURRENT_TIMESTAMP\
 )' % preference_table
 
 
@@ -109,7 +111,7 @@ def save_background_to_db(user_id, background):
     return True
 
 
-def save_user_preferences_to_db(user_id, preference_data):
+def save_user_preferences_to_db(user_id, preference_data, cold = False):
     """
     Stores user preferences regarding recommended movies in the database.
     Expects the user id and a dictionary movie_id -> is_preferred, e.g. { 4123: True, 4102: False }
@@ -118,8 +120,8 @@ def save_user_preferences_to_db(user_id, preference_data):
     cursor = connection.cursor()
 
     for movie_id in preference_data:
-        params = (user_id, movie_id, preference_data[movie_id])
-        cursor.execute('INSERT INTO `%s` VALUES (?, ?, ?)' % preference_table, params)
+        params = (user_id, movie_id, preference_data[movie_id], cold)
+        cursor.execute('INSERT INTO `%s` (`user_id`, `movie_id`, `is_preferred`, `was_cold`) VALUES (?, ?, ?, ?)' % preference_table, params)
 
     connection.commit()
     connection.close()

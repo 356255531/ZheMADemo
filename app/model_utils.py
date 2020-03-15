@@ -98,10 +98,10 @@ def get_movie_name_for_id(i):
 
 def get_movie_poster(movie_df):
     movie_title = movie_df['title']
-    movie_year = movie_df['title']
+    movie_year = movie_df['year']
 
-    movie_url = "http://www.omdbapi.com/?" + "t=" + movie_title + "&y=" + movie_year + "&apikey=" + apikey
-    movie_url_no_year = "http://www.omdbapi.com/?" + "t=" + movie_title + "&apikey=" + apikey
+    movie_url = "http://www.omdbapi.com/?t=%s&y=%i&apikey=%s" % (movie_title, movie_year, apikey)
+    movie_url_no_year = "http://www.omdbapi.com/?t=%s&apikey=%s" % (movie_title, apikey)
 
     r = requests.get(movie_url)
     response_text = json.loads(r.text)

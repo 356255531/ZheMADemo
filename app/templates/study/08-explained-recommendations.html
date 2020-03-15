@@ -9,8 +9,7 @@
     <h3>Are you interested in or did you enjoy watching this movie</h3>
 
     <div class="container" id="container"></div>
-
-
+    {% include 'util/spinner.html' %}
 
     <div class="tinder-buttons">
         <button id="reject">&#x2715;</button>
@@ -25,10 +24,12 @@
         <button><img src="{{ url_for('static', filename='res/star-off.svg') }}"></button>
     </div>
 
+    
+    <script src="{{ url_for('static', filename='js/error-handler.js') }}"></script>
     <script>
         const MOVIES_SSKEY = 'movies';
         const EXPL_SSKEY = 'movies';
-        const CONTINUE_THRESHOLD = 100; {{ threshold or 10 }};
+        const CONTINUE_THRESHOLD = {{ threshold or 10 }};
         const POST_MOVIES_URL = `{{ url_for('post_movie_preferences_for_user', uid = uid, system = system or 'none') }}`;
         const POST_EXPL_URL = `{{ url_for('post_explanation_preferences_for_user', uid = uid, system = system or 'none') }}`;
         const GET_NEW_MOVIES_URL = `{{ url_for('get_movie_recommendations_for_user', uid = uid, system = 'our-system') }}`;
@@ -36,52 +37,75 @@
             NONE: 0x00,
             MOVIE: 0x01,
             EXPL: 0x02,
-            LOADING: 0x04,
             ERROR: 0x08,
         };
 
         const container = document.getElementById('container');
-        // TODO continue recording and sending movie preferences
         const moviePreferences = JSON.parse(sessionStorage.getItem(MOVIES_SSKEY) || '{ }');
         const explanationPreferences = JSON.parse(sessionStorage.getItem(EXPL_SSKEY) || '{ }');
 
         let stage = STAGE.NONE;
         let  remainingMovies = [ ];
-
-        function handleError (err) {
-            console.error(err);
-            stage = STAGE.ERROR;
-            container.classList.remove('loading');
-            container.innerText = 'Failed to load. Please ask the supervisor for help.'
-        }
+        let currentlyLoadingMovies = false;
 
         async function loadNewMovies () {
             // If already loading, skip
-            if (stage === STAGE.LOADING) {
+            if (currentlyLoadingMovies) {
                 return;
             }
-            stage = STAGE.LOADING;
+            currentlyLoadingMovies = true;
 
             // Get a new movie to rate
             const res = await fetch(GET_NEW_MOVIES_URL, { method: 'GET' });
             if (res.status < 400) {
                 const data = await res.json();
                 remainingMovies = data;
-                showNext();
             } else {
-                handleError();
+                handleError(await res.json(), STAGE.ERROR);
             }
+            currentlyLoadingMovies = false;
+        }
+
+        async function dumpPreferences () {
+            try {
+                sessionStorage.setItem(EXPL_SSKEY, JSON.stringify(explanationPreferences));
+                // Send data to API
+                const response = await fetch(POST_EXPL_URL, {
+                    method: 'POST',
+                    body: JSON.stringify(explanationPreferences),
+                    headers: { 'Content-Type': 'application/json' },
+                });
+                if (response.status < 400) {
+                    // Clear the storage
+                    for (let key in explanationPreferences) {
+                        explanationPreferences[key] = { };
+                    }
+                    sessionStorage.setItem(EXPL_SSKEY, '{ }');
+                }
+            } catch (err) {
+                handleError(err, STAGE.ERROR);
+            }
+            return true;
         }
 
         async function showNext () {
             try {
-                if (remainingMovies.length) {
-                    // Clear the page
-                    container.innerHTML = '';
-                    container.classList.add('loading');
+                // Clear the page
+                container.innerHTML = '';
+                container.classList.add('loading');
 
+                if (remainingMovies.length < 10 && !currentlyLoadingMovies) {
+                    loadNewMovies();
+                }
+
+                // Every now and then, dump preferences
+                if (Object.keys(moviePreferences).map((k) => Object.keys(moviePreferences[k]).length).reduce((a, b) => a + b) >= 15) {
+                    dumpPreferences();
+                }
+
+                if (remainingMovies.length) {
                     const allComplete =
-                        // Has preferences for all n TODO explanation types
+                        // TODO Has preferences for all n explanation types, remove hardcode
                         Object.keys(explanationPreferences).length === 3 &&
                         // and each has at least THRESHOLD votes
                         !Object.keys(explanationPreferences)
@@ -90,16 +114,7 @@
 
                     if (allComplete) {
                         // When we have n positive hits, continue with data submission
-                        sessionStorage.setItem(EXPL_SSKEY, JSON.stringify(explanationPreferences));
-                        // Send data to API
-                        await fetch(POST_EXPL_URL, {
-                            method: 'POST',
-                            body: JSON.stringify(explanationPreferences),
-                            headers: { 'Content-Type': 'application/json' },
-                        });
-                        // Clear the storage
-                        sessionStorage.setItem(EXPL_SSKEY, '{ }');
-                        // location = `{{ url_for('post_study_questionnaire') }}`
+                        dumpPreferences().then(() => location = `{{ url_for('post_study_questionnaire') }}`);
                         return;
                     }
 
@@ -120,8 +135,10 @@
                     // Set the correct instruction heading
                     document.querySelector('h3').innerText = 'Are you interested in or did you enjoy watching this movie?';
                     // Generate the explanation
-                    expl.appendChild(document.createTextNode(explanation.text || 'TEST'));
-                    expl.dataset.explanationType = explanation.type;
+                    explText = explanation ? explanation.text : 'No explanation found.';
+                    explType = explanation ? explanation.type : undefined;
+                    expl.appendChild(document.createTextNode(explText));
+                    expl.dataset.explanationType = explType;
                     expl.classList.add(('hidden'));
                     expl.classList.add('explanation')
                     // Append everything
@@ -132,10 +149,10 @@
                     container.appendChild(expl);
                     container.classList.remove('loading');
                 } else {
-                    loadNewMovies();
+                    setTimeout(showNext, 1000);
                 }
             } catch (err) {
-                handleError(err);
+                handleError(err, STAGE.ERROR);
             }
         }
 
@@ -181,11 +198,11 @@
                     explanationPreferences[explanationType] = { };
                 }
                 explanationPreferences[explanationType][container.id] = i;
-                loadNewMovies();
+                showNext();
             });
         });
 
-        loadNewMovies();
+        showNext();
     </script>
 </body>
 </html>

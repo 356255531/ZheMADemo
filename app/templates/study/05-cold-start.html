@@ -10,12 +10,14 @@
     <h3>Are you interested in or did you enjoy watching this movie</h3>
 
     <div class="container" id="container"></div>
+    {% include 'util/spinner.html' %}
 
     <div class="tinder-buttons">
         <button id="reject">&#x2715;</button>
         <button id="accept">&#x2713;</button>
     </div>
 
+    <script src="{{ url_for('static', filename='js/error-handler.js') }}"></script>
     <script type="text/javascript">
         const MOVIES_SSKEY = 'movies';
         const CONTINUE_THRESHOLD = {{ threshold or 10 }};
@@ -30,11 +32,7 @@
         let moviePreferences = JSON.parse(sessionStorage.getItem(MOVIES_SSKEY) || '{ }');
         let system = URL_SYSTEM;
         let remainingMovies = [ ];
-
-        function handleError () {
-            container.classList.remove('loading');
-            container.innerText = 'Failed to load. Please ask the supervisor for help.'
-        }
+        let currentlyLoadingMovies = false;
 
         /** Transition to next system or next page if all systems are covered */
         async function switchSystem () {
@@ -43,10 +41,9 @@
                 remainingMovies = [ ];
                 moviePreferences = { };
                 loadMoreMovies();
+                refresh();
                 return;
             }
-
-            console.info(SYSTEMS);
 
             if (SYSTEMS.length < 1) {
                 console.info('All systems completed, moving to next page.');
@@ -67,18 +64,28 @@
                 remainingMovies = [ ];
                 moviePreferences = { };
                 loadMoreMovies();
+                refresh();
             }
         }
 
         /** Loads more movies for the current system from the API */
         async function loadMoreMovies () {
-            const response = await fetch(GET_NEW_MOVIES_URL.replace(':system', system), { method: 'GET' })
-            if (response.status < 400) {
-                remainingMovies = remainingMovies.concat(await response.json());
-            } else {
-                handleError();
+            try {
+                currentlyLoadingMovies = true;
+                const startSystem = system;
+                console.info('loading more movies for ', system);
+                const response = await fetch(GET_NEW_MOVIES_URL.replace(':system', system), { method: 'GET' })
+                if (response.status < 400) {
+                    if (startSystem === system) {
+                        remainingMovies = remainingMovies.concat(await response.json());
+                    }
+                } else {
+                    handleError(await response.json());
+                }
+                currentlyLoadingMovies = false;
+            } catch (err) {
+                handleError(err);
             }
-            return refresh();
         }
 
         async function refresh () {
@@ -88,13 +95,15 @@
                 container.classList.add('loading');
 
                 // Count hits
-                // TODO
                 const hits = Object.keys(moviePreferences).map((key) => moviePreferences[key]).filter((a) => a).length;
                 if (hits >= CONTINUE_THRESHOLD) {
                     // When we have n positive hits, continue
                     sessionStorage.setItem(MOVIES_SSKEY, JSON.stringify(moviePreferences));
                     switchSystem();
                 } else {
+                    if (remainingMovies.length < 10 && !currentlyLoadingMovies) {
+                        loadMoreMovies();
+                    }
                     if (remainingMovies.length) {
                         // Show the movie next in the list
                         const { id, title, image } = remainingMovies.pop();
@@ -110,7 +119,7 @@
                         container.appendChild(label);
                         container.classList.remove('loading');
                     } else {
-                        loadMoreMovies();
+                        setTimeout(refresh, 1000);
                     }
                 }
             } catch (exception) {
@@ -128,7 +137,7 @@
         function reject () {
             if (container.classList.contains('loading')) return;
             const id = container.id;
-            moviePreferences[id] = true;
+            moviePreferences[id] = false;
             refresh();
         }
 
