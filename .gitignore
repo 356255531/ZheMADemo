@@ -1,7 +1,7 @@
 # Data
 tmp/
 data/
-.db
+*.db
 
 # Pycharm
 .idea/
