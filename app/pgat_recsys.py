@@ -3,14 +3,54 @@ __model__ = 'PAGAT'
 import numpy as np
 import torch
 from torch.utils.data import DataLoader
+import torch.nn.functional as F
 from torch_geometric.datasets import MovieLens
 from torch_geometric.utils import path
+from torch_geometric.nn import PAGATConv
+
+
 import os
 import itertools
 import pandas as pd
 
-from .pagat import PAGATNet
 from .utils import get_folder_path
+
+
+class PAGATNet(torch.nn.Module):
+    def __init__(self, num_nodes, emb_dim, repr_dim, hidden_size, heads, dropout=0.5, path_dropout=0.5):
+        super(PAGATNet, self).__init__()
+
+        self.node_emb = torch.nn.Embedding(num_nodes, emb_dim, max_norm=1, norm_type=2.0)
+
+        self.path_dropout = path_dropout
+        self.dropout = dropout
+        self.conv1 = PAGATConv(
+            emb_dim,
+            hidden_size,
+            heads=heads,
+            dropout=dropout,
+        )
+        self.conv2 = PAGATConv(
+            heads * hidden_size,
+            repr_dim,
+            heads=heads,
+            dropout=dropout,
+            concat=False
+        )
+
+    def reset_parameters(self):
+        self.conv1.reset_parameters()
+        self.conv2.reset_parameters()
+
+    def forward(self, x, path_index):
+        if self.training:
+            path_num = path_index.shape[1]
+            path_index = path_index[:, np.random.choice(range(path_num), int(path_num * (1 - self.path_dropout)))]
+        x = F.dropout(x, p=self.dropout, training=self.training)
+        x = F.elu(self.conv1(x, path_index)[0])
+        x = F.dropout(x, p=self.dropout, training=self.training)
+        x, att = self.conv2(x, path_index)
+        return x, att
 
 
 def get_dataloader(data, batch_size):
@@ -87,11 +127,17 @@ class PGATRecSys(object):
         # Build edges for new user
         self.new_user_nid = self.model.node_emb.weight.shape[0]
 
-        new_user_gender_nid = self.data.e2nid[0]['gender'][demographic_info[0]]
-        new_user_occ_nid = self.data.e2nid[0]['occ'][demographic_info[1]]
+        age = sorted(self.data.e2nid[0]['age'].keys())[int(demographic_info[0])]
+        new_user_age_nid = self.data.e2nid[0]['age'][age]
+        demo_nids = [new_user_age_nid]
+        new_user_gender_nid = self.data.e2nid[0]['gender'].get(demographic_info[1], None)
+        demo_nids += [new_user_gender_nid] if new_user_gender_nid is not None else []
+        new_user_occ_nid = self.data.e2nid[0]['occ'][int(demographic_info[2])]
+        demo_nids = [new_user_age_nid, new_user_occ_nid]
+
         i_nids = [self.data.e2nid[0]['iid'][iid] for iid in iids]
-        row = i_nids + [new_user_gender_nid, new_user_occ_nid]
-        col = [self.new_user_nid for i in range(len(iids) + 2)]
+        row = i_nids + demo_nids
+        col = [self.new_user_nid for _ in range(len(iids) + len(demo_nids))]
         self.new_edge_index = torch.from_numpy(np.array([row + col, col + row])).long().to(self.device_args['device'])
         edge_index = torch.cat([self.data.edge_index, self.new_edge_index], dim=1)
 
