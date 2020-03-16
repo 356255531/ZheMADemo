@@ -140,11 +140,12 @@ def get_movie_recommendations_for_user(uid, system):
     if system == SYSTEMS['OUR_SYSTEM']:
         recommendations, explanations = recsys.get_recommendations({'IUI': 3, 'UIU':  0, 'IUDD': 0, 'UICC': 0 })
         recommendations = list(recommendations[[ 'iid', 'title', 'year' ]].to_dict(orient='index').values())
-        for rec in recommendations:
+        for rec, expl in zip(recommendations, explanations):
             rec['image'] = get_movie_poster(rec)
             rec['id']  = rec['iid']
-
-        # TODO Add explanation if requested
+            if with_explanations:
+                # TODO Get explanation type and text from recsys
+                rec['explanation'] = { 'type': 0, 'text': 0 }
 
         return jsonify(recommendations)
     elif system == SYSTEMS['BENCHMARK_1']:

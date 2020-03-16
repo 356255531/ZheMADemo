@@ -24,7 +24,7 @@
         <button><img src="{{ url_for('static', filename='res/star-off.svg') }}"></button>
     </div>
 
-    
+
     <script src="{{ url_for('static', filename='js/error-handler.js') }}"></script>
     <script>
         const MOVIES_SSKEY = 'movies';
@@ -32,13 +32,15 @@
         const CONTINUE_THRESHOLD = {{ threshold or 10 }};
         const POST_MOVIES_URL = `{{ url_for('post_movie_preferences_for_user', uid = uid, system = system or 'none') }}`;
         const POST_EXPL_URL = `{{ url_for('post_explanation_preferences_for_user', uid = uid, system = system or 'none') }}`;
-        const GET_NEW_MOVIES_URL = `{{ url_for('get_movie_recommendations_for_user', uid = uid, system = 'our-system') }}`;
+        const GET_NEW_MOVIES_URL = `{{ url_for('get_movie_recommendations_for_user', uid = uid, system = 'our-system', explanations = True) }}`;
         const STAGE = {
             NONE: 0x00,
             MOVIE: 0x01,
             EXPL: 0x02,
             ERROR: 0x08,
         };
+        // FIXME Magic Number
+        const NUMBER_OF_DIFFERENT_EXPLANATION_TYPES = 4;
 
         const container = document.getElementById('container');
         const moviePreferences = JSON.parse(sessionStorage.getItem(MOVIES_SSKEY) || '{ }');
@@ -99,14 +101,14 @@
                 }
 
                 // Every now and then, dump preferences
-                if (Object.keys(moviePreferences).map((k) => Object.keys(moviePreferences[k]).length).reduce((a, b) => a + b) >= 15) {
+                if (Object.keys(moviePreferences).map((k) => Object.keys(moviePreferences[k]).length).reduce((a, b) => a + b, 0) >= 15) {
                     dumpPreferences();
                 }
 
                 if (remainingMovies.length) {
                     const allComplete =
-                        // TODO Has preferences for all n explanation types, remove hardcode
-                        Object.keys(explanationPreferences).length === 3 &&
+                        // Has preferences for all explanation types
+                        Object.keys(explanationPreferences).length === NUMBER_OF_DIFFERENT_EXPLANATION_TYPES &&
                         // and each has at least THRESHOLD votes
                         !Object.keys(explanationPreferences)
                             .map((type) => Object.keys(explanationPreferences[type]).length >= CONTINUE_THRESHOLD)
