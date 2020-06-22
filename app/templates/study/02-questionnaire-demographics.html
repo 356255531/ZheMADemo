@@ -8,7 +8,11 @@
         <h2>Please provide some information about you</h2>
 
         <form>
-            <p>Your study id is <strong>{{ uid }}</strong></p>
+            <p>
+                Your study id is <strong>{{ uid }}</strong>. <br>
+                This is an automatically generated anonymous ID.
+                Should you decide to withdraw your GDPR consent at any time, you can use this ID to let us know.
+            </p>
 
             <input id="userID" type="hidden" value="{{ uid }}" required >
 

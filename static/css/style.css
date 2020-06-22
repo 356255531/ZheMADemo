@@ -231,15 +231,14 @@ label span + * {
 
 .legal-info {
   display: flex;
-  flex-direction: row;
+  flex-direction: column;
+  padding: 1rem;
 }
 
 .statutory-disclosure,
 .data-consent {
   display: block;
-  padding: 1rem;
   font-size: 80%;
-  flex: 1;
 }
 
 .statutory-disclosure h3,

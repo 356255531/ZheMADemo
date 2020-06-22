@@ -5,5 +5,4 @@ app = Flask(__name__,
             static_folder='../static')
 app.config['DEBUG'] = True
 
-from app import routes
 from app import study_routes

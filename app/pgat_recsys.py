@@ -132,7 +132,7 @@ class PGATRecSys(object):
         demo_nids = [new_user_age_nid]
         new_user_gender_nid = self.data.e2nid[0]['gender'].get(demographic_info[1], None)
         demo_nids += [new_user_gender_nid] if new_user_gender_nid is not None else []
-        new_user_occ_nid = self.data.e2nid[0]['occ'][int(demographic_info[2])]
+        new_user_occ_nid = self.data.e2nid[0]['occ'][demographic_info[2]]
         demo_nids = [new_user_age_nid, new_user_occ_nid]
 
         i_nids = [self.data.e2nid[0]['iid'][iid] for iid in iids]

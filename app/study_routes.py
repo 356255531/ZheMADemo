@@ -107,11 +107,13 @@ def wrap_up():
 @app.route('/api/movies/top', methods = [ 'GET' ])
 def get_top_movies():
     """
+    Unused
+
     API endpoint that provides a list of the n top rated movies.
     A maximum of the top 300 can be retrieved.
     Accepts the following parameters in the query string:
-    offsete: offset in the top 300 movies starting with the top movie, default 0
-    count: number of items returned, default 6
+    :param offset: offset in the top 300 movies starting with the top movie, default 0
+    :param count: number of items returned, default 6
     """
     offset = request.args.get('offset', default = 0, type = int)
     count = request.args.get('count', default = 6, type = int)
@@ -128,11 +130,10 @@ def get_top_movies():
 @app.route('/api/user/<uid>/recommendations/<system>', methods = [ 'GET' ])
 def get_movie_recommendations_for_user(uid, system):
     """
-    API endpoint that provides a set of recommendations, ignoring previously
-    seen recommendations, i.e. "cold recommendations"
+    API endpoint that provides a set of recommendations
     """
-    n = request.args.get('count') or 10
-    with_explanations = False if request.args.get('explanations') is None else True
+    n = request.args.get('count', default = 10, type = int)
+    with_explanations = request.args.get('explanations', default = False, type = bool)
 
     if not recsys.user_is_built:
         return make_response(jsonify({ 'error': 'User not built.' }), 400)
@@ -149,11 +150,11 @@ def get_movie_recommendations_for_user(uid, system):
 
         return jsonify(recommendations)
     elif system == SYSTEMS['BENCHMARK_1']:
-        # TODO
+        # TODO access other recsys
         recommendations = [ ]
         return jsonify([ { 'id': 0, 'image': 'https://m.media-amazon.com/images/M/MV5BMDU2ZWJlMjktMTRhMy00ZTA5LWEzNDgtYmNmZTEwZTViZWJkXkEyXkFqcGdeQXVyNDQ2OTk4MzI@._V1_SX300.jpg', 'title': 'Toy Story 2' } ])
     elif system == SYSTEMS['BENCHMARK_2']:
-        # TODO
+        # TODO access other recsys
         recommendations = [ ]
         return jsonify([ { 'id': 0, 'image': 'https://m.media-amazon.com/images/M/MV5BMDU2ZWJlMjktMTRhMy00ZTA5LWEzNDgtYmNmZTEwZTViZWJkXkEyXkFqcGdeQXVyNDQ2OTk4MzI@._V1_SX300.jpg', 'title': 'Toy Story 3' } ])
     else:
