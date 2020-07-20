@@ -13,7 +13,7 @@ data_folder, weights_folder, logger_folder = \
     get_folder_path(model='Graph', dataset='Movielens1m', loss_type='BPR')
 
 # Setup device
-device = 'cpu' if not torch.cuda.is_available() else 'cuda:7'
+device = 'cpu' if not torch.cuda.is_available() else 'cuda'
 
 # Setup args
 dataset_args = {
@@ -49,7 +49,33 @@ def _negative_sampling(u_nid, num_negative_samples, train_splition, item_nid_occ
     return negative_inids
 
 
-class PAGAGATRecsysModel(PAGAGATRecsysModel):
+def get_utils():
+    dataset_args['_negative_sampling'] = _negative_sampling
+    dataset = MovieLens(**dataset_args)
+
+    model_args['num_nodes'] = dataset.num_nodes
+    model_args['dataset'] = dataset
+    model = PAGAGAT(**model_args).to(device)
+
+    opt_class = get_opt_class('adam')
+    optimizer = opt_class(
+        params=model.parameters(),
+        lr=1e-3,
+        weight_decay=0
+    )
+
+    # Load models
+    weights_path = os.path.join(weights_folder, 'run_{}'.format(str(1)))
+    if not os.path.exists(weights_path):
+        os.makedirs(weights_path, exist_ok=True)
+    weights_file = os.path.join(weights_path, 'latest.pkl')
+    model, optimizer, last_epoch, rec_metrics = load_model(weights_file, model, optimizer, device)
+    model.eval()  # switch model to eval mode
+
+    return dataset, model
+
+
+class PAGAGAT(PAGAGATRecsysModel):
     def update_graph_input(self, dataset):
         user2item_edge_index = torch.from_numpy(dataset.edge_index_nps['user2item']).long().to(device)
         year2item_edge_index = torch.from_numpy(dataset.edge_index_nps['year2item']).long().to(device)
@@ -78,32 +104,6 @@ class PAGAGATRecsysModel(PAGAGATRecsysModel):
             meta_path_edge_indicis_10
         ]
         self.meta_path_edge_index_list = meta_path_edge_index_list
-
-
-def get_utils():
-    dataset_args['_negative_sampling'] = _negative_sampling
-    dataset = MovieLens(**dataset_args)
-
-    model_args['num_nodes'] = dataset.num_nodes
-    model_args['dataset'] = dataset
-    model = PAGAGATRecsysModel(**model_args).to(device)
-
-    opt_class = get_opt_class('adam')
-    optimizer = opt_class(
-        params=model.parameters(),
-        lr=1e-3,
-        weight_decay=0
-    )
-
-    # Load models
-    weights_path = os.path.join(weights_folder, 'run_{}'.format(str(1)))
-    if not os.path.exists(weights_path):
-        os.makedirs(weights_path, exist_ok=True)
-    weights_file = os.path.join(weights_path, 'latest.pkl')
-    model, optimizer, last_epoch, rec_metrics = load_model(weights_file, model, optimizer, device)
-    model.eval()  # switch model to eval mode
-
-    return dataset, model
 
 
 class PAGARecSys(object):
@@ -207,53 +207,11 @@ class PAGARecSys(object):
         return rec_item_df, exps
 
     def get_explanation(self, iid):
-        inid = self.dataset.e2nid['iid'][iid]
-        row = [self.new_user_nid, self.new_user_nid]
-        col = [self.new_user_nid, movie_nid]
-        expl_edge_index_np = np.array([row, col])
-        edge_index = torch.cat(
-            (
-                self.data.edge_index,
-                self.new_edge_index,
-                torch.from_numpy(expl_edge_index_np).long().to(self.device_args['device'])
-            ),
-            dim=1)
-        new_path_np = path.join(edge_index.cpu().numpy(), row)
-        new_path = torch.from_numpy(new_path_np).long().to(self.device_args['device'])
-        new_node_emb = torch.cat((self.model.node_emb.weight, self.new_user_emb.weight), dim=0)
-        att = self.model.forward(new_node_emb, new_path)[1]
-        opt_path = new_path[:, torch.argmax(att)].numpy()
-
-        e = self.data.nid2e[0][opt_path[0]]
-
-        if e[0] == 'uid':
-            expl = 'Uid0--Iid{}--Uid{}'.format(iid, e[1])
-            expl_type = 'UIU'
-        elif e[0] == 'iid':
-            expl = 'Iid{}--Uid0--Iid{}'.format(
-                iid,
-                e[1])
-            expl_type = 'IUI'
-        elif e[0] == 'gender' or e[0] == 'occ':
-            expl = 'Iid{}--Uid0--DFType{}--DFValue{}'.format(
-                iid,
-                e[0],
-                e[1]
-            )
-            expl_type = 'IUDD'
-        else:
-            expl = 'Uid0--Iid{}--CFType{}--CFValue{}'.format(
-                iid,
-                e[0],
-                e[1]
-            )
-            expl_type = 'UICC'
-
-        return expl, expl_type
+        pass
 
 
 if __name__ == '__main__':
     recsys = PAGARecSys(num_recs=10)
     recsys.get_top_n_popular_items()
     recsys.build_user([1, 2, 3, 4], [1, 'M', 1])
-    print(recsys.get_recommendations())
+    print(recsys.get_recommendations(10))
