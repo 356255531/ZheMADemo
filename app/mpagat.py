@@ -3,7 +3,7 @@ import os
 import random as rd
 import numpy as np
 
-from graph_recsys_benchmark.models import PAGAGATRecsysModel
+from graph_recsys_benchmark.models import MPAGATRecsysModel
 from graph_recsys_benchmark.datasets import MovieLens
 from graph_recsys_benchmark.utils import get_folder_path
 from graph_recsys_benchmark.utils import get_opt_class, load_model
@@ -28,11 +28,26 @@ model_args = {
     'if_use_features': False,
     'emb_dim': 16, 'hidden_size': 32,
     'repr_dim': 16, 'dropout': 0,
-    'num_heads': 1, 'meta_path_steps': [2 for _ in range(10)],
-    'aggr': 'concat'
+    'meta_path_steps': [2 for _ in range(10)], 'num_heads': 1,
+    'aggr': 'att'
 }
+
 print('dataset params: {}'.format(dataset_args))
 print('task params: {}'.format(model_args))
+
+
+TEMPLATE = {
+    'user': 'User {}, which has simliar perference as you, watched this movie.',
+    'item': 'This movie is silimar to the movie {}, you have watched before.',
+    'year': 'I guess you may like this kinds of movies around year {}',
+    'actor': 'I guess you may like movies acted by {}',
+    'director': 'I guess you may like movies directed by {}',
+    'writer': 'I guess you may like movies written by {}',
+    'gender': 'People who is of the same gender ({}) as you may like this movie',
+    'genres': 'You may like this movie due to its genres {}.',
+    'age': 'People of your age ({}) may like this movie',
+    'occ': 'People have the same occupation {} as you may like this movie'
+}
 
 
 def _negative_sampling(u_nid, num_negative_samples, train_splition, item_nid_occs):
@@ -49,33 +64,7 @@ def _negative_sampling(u_nid, num_negative_samples, train_splition, item_nid_occ
     return negative_inids
 
 
-def get_utils():
-    dataset_args['_negative_sampling'] = _negative_sampling
-    dataset = MovieLens(**dataset_args)
-
-    model_args['num_nodes'] = dataset.num_nodes
-    model_args['dataset'] = dataset
-    model = PAGAGAT(**model_args).to(device)
-
-    opt_class = get_opt_class('adam')
-    optimizer = opt_class(
-        params=model.parameters(),
-        lr=1e-3,
-        weight_decay=0
-    )
-
-    # Load models
-    weights_path = os.path.join(weights_folder, 'run_{}'.format(str(1)))
-    if not os.path.exists(weights_path):
-        os.makedirs(weights_path, exist_ok=True)
-    weights_file = os.path.join(weights_path, 'latest.pkl')
-    model, optimizer, last_epoch, rec_metrics = load_model(weights_file, model, optimizer, device)
-    model.eval()  # switch model to eval mode
-
-    return dataset, model
-
-
-class PAGAGAT(PAGAGATRecsysModel):
+class MPAGATRecsysModel(MPAGATRecsysModel):
     def update_graph_input(self, dataset):
         user2item_edge_index = torch.from_numpy(dataset.edge_index_nps['user2item']).long().to(device)
         year2item_edge_index = torch.from_numpy(dataset.edge_index_nps['year2item']).long().to(device)
@@ -106,9 +95,35 @@ class PAGAGAT(PAGAGATRecsysModel):
         self.meta_path_edge_index_list = meta_path_edge_index_list
 
 
-class PAGARecSys(object):
+def get_utils():
+    dataset_args['_negative_sampling'] = _negative_sampling
+    dataset = MovieLens(**dataset_args)
 
-    def __init__(self, num_recs):
+    model_args['num_nodes'] = dataset.num_nodes
+    model_args['dataset'] = dataset
+    model = MPAGATRecsysModel(**model_args).to(device)
+
+    opt_class = get_opt_class('adam')
+    optimizer = opt_class(
+        params=model.parameters(),
+        lr=1e-3,
+        weight_decay=0
+    )
+
+    # Load models
+    weights_path = os.path.join(weights_folder, 'run_{}'.format(str(1)))
+    if not os.path.exists(weights_path):
+        os.makedirs(weights_path, exist_ok=True)
+    weights_file = os.path.join(weights_path, 'latest.pkl')
+    model, optimizer, last_epoch, rec_metrics = load_model(weights_file, model, optimizer, device)
+    model.eval()  # switch model to eval mode
+
+    return dataset, model
+
+
+class MPAGATRecsys(object):
+
+    def __init__(self):
         self.user_is_built = False
 
         self.dataset, self.model = get_utils()
@@ -128,6 +143,37 @@ class PAGARecSys(object):
         popular_iids = ratings_df.iid[:n].to_numpy()
         popular_item_df = self.dataset.items[self.dataset.items.iid.isin(popular_iids)]
         return popular_item_df
+
+    def build_cold_user(self, demographic_info):
+        """
+        Build user profiles given the historical user interactions
+        :param iids: user selected item ids, list
+        :param demographic_info: (age, gender, occupation), tuple
+        :return:
+        """
+        if self.user_is_built is True:
+            print('The user model already exists!')
+        # Build edges for new user
+        self.demographic_info = demographic_info
+        self.new_user_nid = self.model.x.shape[0]
+        self.model.x = torch.nn.Parameter(torch.cat(
+            [self.model.x, torch.randn((1, model_args['emb_dim']), device=device)],
+            dim=0
+        ))
+
+        age_nid = self.dataset.e2nid_dict['age'][int(demographic_info[0])]
+        gender_nid = self.dataset.e2nid_dict['gender'][demographic_info[1]]
+        occ_nid = self.dataset.e2nid_dict['occ'][int(demographic_info[2])]
+
+        self.dataset.edge_index_nps['age2user'] = np.hstack([self.dataset.edge_index_nps['age2user'], [[age_nid], [self.new_user_nid]]])
+        self.dataset.edge_index_nps['gender2user'] = np.hstack([self.dataset.edge_index_nps['gender2user'], [[gender_nid], [self.new_user_nid]]])
+        self.dataset.edge_index_nps['occ2user'] = np.hstack([self.dataset.edge_index_nps['occ2user'], [[occ_nid], [self.new_user_nid]]])
+
+        self.model.update_graph_input(self.dataset)
+        self.model.eval()
+
+        self.user_is_built = True
+        print('cold user building done...')
 
     def build_user(self, base_iids, demographic_info):
         """
@@ -154,7 +200,7 @@ class PAGARecSys(object):
         self.dataset.edge_index_nps['gender2user'] = np.hstack([self.dataset.edge_index_nps['gender2user'], [[gender_nid], [self.new_user_nid]]])
         self.dataset.edge_index_nps['occ2user'] = np.hstack([self.dataset.edge_index_nps['occ2user'], [[occ_nid], [self.new_user_nid]]])
 
-        # Build the
+        # Build the interactions
         self.base_iids = [i for i in base_iids]
         base_inids = [self.dataset.e2nid_dict['iid'][iid] for iid in base_iids]
         new_interactions = np.vstack([[self.new_user_nid for _ in range(len(self.base_iids))], base_inids])
@@ -166,7 +212,7 @@ class PAGARecSys(object):
         self.user_is_built = True
         print('user building done...')
 
-    def rebuild_user(self, base_iids):
+    def rebuild_user(self, new_iids):
         """
         Build user profiles given the historical user interactions
         :param iids: user selected item ids, list
@@ -174,12 +220,12 @@ class PAGARecSys(object):
         :return:
         """
         if self.user_is_built is False:
-            print('The user is not built!')
+            print('The user is not yet built!')
 
         # Build the user with new interactions
-        self.base_iids = self.base_iids + [i for i in base_iids]
-        base_inids = [self.dataset.e2nid_dict['iid'][iid] for iid in base_iids]
-        new_interactions = np.vstack([[self.new_user_nid for _ in range(len(self.base_iids))], base_inids])
+        self.base_iids = self.base_iids + [i for i in new_iids]
+        new_inids = [self.dataset.e2nid_dict['iid'][iid] for iid in new_iids]
+        new_interactions = np.vstack([[self.new_user_nid for _ in range(len(self.base_iids))], new_inids])
         self.dataset.edge_index_nps['user2item'] = np.hstack([self.dataset.edge_index_nps['user2item'], new_interactions])
 
         self.model.update_graph_input(self.dataset)
@@ -202,16 +248,25 @@ class PAGARecSys(object):
         rec_iids = np.array(candidate_iids)[rec_idx]
 
         rec_item_df = self.dataset.items[self.dataset.items.iid.isin(rec_iids)]
-        exps = [self.get_explanation(rec_iid) for rec_iid in rec_iids]
+        exps = self.get_explanation(rec_iids)
 
         return rec_item_df, exps
 
-    def get_explanation(self, iid):
-        pass
+    def get_explanation(self, rec_iids):
+        # def get_head_e(attr, inids):
+        #     pass
+        # rec_inids = [self.dataset.e2nid['iid'][iid] for iid in rec_iids]
+        # enids = [get_head_e(self.model.attrs, inid) for inid in rec_inids]
+        # entities = [self.dataset.nid2e[nid] for nid in enids]
+        # expls = [TEMPLATE[expl_type].format(entity) for expl_type, entity in entities]
+
+        entities = [('age', 20) for _ in range(len(rec_iids))]
+        expls = [TEMPLATE[expl_type].format(entity) for expl_type, entity in entities]
+        return expls
 
 
 if __name__ == '__main__':
-    recsys = PAGARecSys(num_recs=10)
+    recsys = MPAGATRecsys()
     recsys.get_top_n_popular_items()
     recsys.build_user([1, 2, 3, 4], [1, 'M', 1])
     print(recsys.get_recommendations(10))

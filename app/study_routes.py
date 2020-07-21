@@ -174,7 +174,7 @@ def post_demographics_for_user(uid):
     background = request.json['background']
     save_background_to_db(uid, background)
 
-    recsys.build_user([ ], (demographics['age'], demographics['gender'], demographics['occupation']))
+    recsys.build_cold_user([ ], (demographics['age'], demographics['gender'], demographics['occupation']))
     return make_response(jsonify({ 'success': True }), 202)
 
 
@@ -191,7 +191,7 @@ def post_movie_preferences_for_user(uid):
     if db_data is None:
         return make_response(jsonify({ 'error': 'User not found' }), 404)
     db_uid, age, gender, occupation = db_data
-    recsys.build_user([ int(key) for key, is_preferred in preference_data.items() if is_preferred ], (age, gender, '%i' % occupation))
+    recsys.build_cold_user([int(key) for key, is_preferred in preference_data.items() if is_preferred], (age, gender, '%i' % occupation))
     return make_response(jsonify({ 'success': True }), 202)
 
 
@@ -212,7 +212,7 @@ def post_explanation_preferences_for_user(uid):
         return make_response(jsonify({ 'error': 'User not found' }), 404)
     db_uid, age, gender, occupation = db_data
 
-    recsys.build_user([ int(key) for key, is_preferred in movie_preferences.items() if is_preferred ], (age, gender, '%i' % occupation))
+    recsys.build_cold_user([int(key) for key, is_preferred in movie_preferences.items() if is_preferred], (age, gender, '%i' % occupation))
     return make_response(jsonify({'success': True}), 202)
 
 @app.route('/api/user/<uid>/questionnaires/post', methods = [ 'POST' ])
