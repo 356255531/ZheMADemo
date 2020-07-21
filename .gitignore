@@ -1,6 +1,6 @@
 # Data
 tmp/
-data/
+raw/
 *.db
 
 # Pycharm

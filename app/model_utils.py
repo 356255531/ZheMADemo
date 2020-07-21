@@ -2,43 +2,11 @@ from app import app
 import pandas as pd
 import requests
 import json
-import random
-import argparse
-import torch
-from torch_geometric.datasets import MovieLens
 
-from .pgat_recsys import PGATRecSys
-from .utils import get_folder_path
+from .mpagat import MPAGATRecsys
 from .apikey import apikey
 
 default_poster_src = 'https://www.nehemiahmfg.com/wp-content/themes/dante/images/default-thumb.png'
-
-########################## Define arguments ##########################
-parser = argparse.ArgumentParser()
-
-# Dataset params
-parser.add_argument("--dataset", type=str, default='movielens', help="")
-parser.add_argument("--dataset_name", type=str, default='1m', help="")
-parser.add_argument("--directed", type=str, default=False, help="")
-parser.add_argument("--num_core", type=int, default=10, help="")
-parser.add_argument("--step_length", type=int, default=2, help="")
-parser.add_argument("--train_ratio", type=float, default=None, help="")
-parser.add_argument("--debug", default=0.01, help="")
-
-# Model params
-parser.add_argument("--heads", type=int, default=4, help="")
-parser.add_argument("--dropout", type=float, default=0.6, help="")
-parser.add_argument("--emb_dim", type=int, default=16, help="")
-parser.add_argument("--repr_dim", type=int, default=16, help="")
-parser.add_argument("--hidden_size", type=int, default=64, help="")
-
-# Device params
-parser.add_argument("--device", type=str, default='cpu', help="")
-parser.add_argument("--gpu_idx", type=str, default='0', help="")
-
-args = parser.parse_args()
-
-data_folder, weights_folder, logger_folder = get_folder_path(args.dataset + args.dataset_name)
 
 # save id selected by users
 current_user_id = ''
@@ -52,31 +20,7 @@ rs_proportion = {'IUI':3,
                  'UICC':2,
                  'SUM':10}
 
-
-########################## Setup Device ##########################
-if not torch.cuda.is_available() or args.device == 'cpu':
-    device = 'cpu'
-else:
-    device = 'cuda:{}'.format(args.gpu_idx)
-
-
-########################## Define parameters ##########################
-dataset_args = {
-    'root': data_folder, 'dataset': args.dataset, 'name': args.dataset_name,
-    'directed': args.directed, 'num_core': args.num_core, 'step_length': args.step_length, 'train_ratio': args.train_ratio,
-    'debug': args.debug
-}
-model_args = {
-    'heads': args.heads, 'emb_dim': args.emb_dim,
-    'repr_dim': args.repr_dim, 'dropout': args.dropout,
-    'hidden_size': args.hidden_size, 'model_path': weights_folder
-}
-device_args = {'debug': args.debug, 'device': device, 'gpu_idx': args.gpu_idx}
-print('dataset params: {}'.format(dataset_args))
-print('task params: {}'.format(model_args))
-print('device_args params: {}'.format(device_args))
-
-recsys = PGATRecSys(num_recs=10, dataset_args=dataset_args, model_args=model_args, device_args=device_args)
+recsys = MPAGATRecsys()
 
 refresh_value = 0
 
