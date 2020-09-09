@@ -5,6 +5,7 @@ import json
 
 # from .mpagat import MPAGATRecsys
 from .emf import EMFRecsys
+
 from .apikey import apikey
 
 default_poster_src = 'https://www.nehemiahmfg.com/wp-content/themes/dante/images/default-thumb.png'
@@ -21,7 +22,8 @@ rs_proportion = {'IUI':3,
                  'UICC':2,
                  'SUM':10}
 
-recsys = EMFRecsys()
+
+recsys = MPAGATRecsys()
 
 refresh_value = 0
 

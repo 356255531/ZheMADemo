@@ -175,7 +175,7 @@ def post_demographics_for_user(uid):
     background = request.json['background']
     save_background_to_db(uid, background)
 
-    # recsys.build_user([], (demographics['age'], demographics['gender'], demographics['occupation']))
+    recsys.build_user([ ], (demographics['age'], demographics['gender'], demographics['occupation']))
     return make_response(jsonify({ 'success': True }), 202)
 
 
