@@ -139,14 +139,15 @@ def get_movie_recommendations_for_user(uid, system):
         return make_response(jsonify({ 'error': 'User not built.' }), 400)
 
     if system == SYSTEMS['OUR_SYSTEM']:
-        recommendations, explanations = recsys.get_recommendations({'IUI': 3, 'UIU':  0, 'IUDD': 0, 'UICC': 0 })
+        recommendations, explanations, explanation_types = recsys.get_recommendations(
+            10 # TODO
+        )
         recommendations = list(recommendations[[ 'iid', 'title', 'year' ]].to_dict(orient='index').values())
-        for rec, expl in zip(recommendations, explanations):
+        for rec, expl, expl_type in zip(recommendations, explanations, explanation_types):
             rec['image'] = get_movie_poster(rec)
             rec['id']  = rec['iid']
             if with_explanations:
-                # TODO Get explanation type and text from recsys
-                rec['explanation'] = { 'type': 0, 'text': 0 }
+                rec['explanation'] = { 'type': expl_type, 'text': expl }
 
         return jsonify(recommendations)
     elif system == SYSTEMS['BENCHMARK_1']:
@@ -174,7 +175,7 @@ def post_demographics_for_user(uid):
     background = request.json['background']
     save_background_to_db(uid, background)
 
-    recsys.build_cold_user([ ], (demographics['age'], demographics['gender'], demographics['occupation']))
+    # recsys.build_user([], (demographics['age'], demographics['gender'], demographics['occupation']))
     return make_response(jsonify({ 'success': True }), 202)
 
 
@@ -191,7 +192,7 @@ def post_movie_preferences_for_user(uid):
     if db_data is None:
         return make_response(jsonify({ 'error': 'User not found' }), 404)
     db_uid, age, gender, occupation = db_data
-    recsys.build_cold_user([int(key) for key, is_preferred in preference_data.items() if is_preferred], (age, gender, '%i' % occupation))
+    recsys.build_user([int(key) for key, is_preferred in preference_data.items() if is_preferred], (age, gender, '%i' % occupation))
     return make_response(jsonify({ 'success': True }), 202)
 
 

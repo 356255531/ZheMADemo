@@ -241,16 +241,16 @@ class MPAGATRecsys(object):
         candidate_iids = [i for i in candidate_iids if i not in self.picked_iids and i not in self.base_iids]
         candidate_inids = [self.dataset.e2nid_dict['iid'][iid] for iid in candidate_iids]
 
-        unids_t = torch.from_numpy(np.array([self.new_user_nid for _ in range(len(candidate_inids))])).to(device)
-        candidate_inids_t = torch.from_numpy(np.array(candidate_inids)).to(device)
+        unids_t = torch.from_numpy(np.array([self.new_user_nid for _ in range(len(candidate_inids))])).to(device).long()
+        candidate_inids_t = torch.from_numpy(np.array(candidate_inids)).to(device).long()
         pred = self.model.predict(unids_t, candidate_inids_t).reshape(-1)
         rec_idx = torch.topk(pred, k=num_recs)[1].cpu().numpy()
         rec_iids = np.array(candidate_iids)[rec_idx]
 
         rec_item_df = self.dataset.items[self.dataset.items.iid.isin(rec_iids)]
-        exps = self.get_explanation(rec_iids)
+        exps, exp_types = self.get_explanation(rec_iids)
 
-        return rec_item_df, exps
+        return rec_item_df, exps, exp_types
 
     def get_explanation(self, rec_iids):
         # def get_head_e(attr, inids):
@@ -260,9 +260,11 @@ class MPAGATRecsys(object):
         # entities = [self.dataset.nid2e[nid] for nid in enids]
         # expls = [TEMPLATE[expl_type].format(entity) for expl_type, entity in entities]
 
+        import random
         entities = [('age', 20) for _ in range(len(rec_iids))]
         expls = [TEMPLATE[expl_type].format(entity) for expl_type, entity in entities]
-        return expls
+        expls_type = [random.choice(list(TEMPLATE.keys())) for _ in range(len(rec_iids))]
+        return expls, expls_type
 
 
 if __name__ == '__main__':
