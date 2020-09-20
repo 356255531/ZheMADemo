@@ -111,7 +111,7 @@ class EMFRecsys(object):
             all_uids_t = torch.arange(self.num_users, dtype=torch.long, device=device)
             selected_uid_t = torch.tensor([self.selected_uid], dtype=torch.long, device=device)
             batch_user_dists_t = torch.sum(self.user_embedding(all_uids_t) * self.user_embedding(selected_uid_t), dim=-1)
-            neighbour_uids_np = torch.topk(batch_user_dists_t, k=11, largest=True)[1][1:].numpy()
+            neighbour_uids_np = torch.topk(batch_user_dists_t, k=11, largest=True)[1][1:].cpu().numpy()
             user_cf_iids = set(itertools.chain.from_iterable([self.uid_iid_map[neighbour] for neighbour in neighbour_uids_np]))
             user_cf_iids = list(user_cf_iids.difference(self.picked_iids))
             user_cf_iids = [iid for iid in user_cf_iids if iid not in self.recommended and iid not in self.picked_iids]
@@ -133,11 +133,11 @@ class EMFRecsys(object):
             candidate_iids_t = torch.tensor(candidate_iids, dtype=torch.long, device=device)
             est_ratings = torch.sum(self.item_embedding(candidate_iids_t) * self.user_embedding(selected_uid_t), dim=-1)
             candidate_indices_t = torch.topk(est_ratings, k=num_recs, largest=True)[1]
-            rec_iids = candidate_iids_t[candidate_indices_t].numpy()
+            rec_iids = candidate_iids_t[candidate_indices_t].cpu().numpy()
             self.recommended = self.recommended.union(rec_iids)
 
             rec_item_df = self.movies[self.movies.iid.isin(rec_iids)]
-            rec_iid_tuples = [candidates_iid_tuples[idx] for idx in candidate_indices_t.numpy()]
+            rec_iid_tuples = [candidates_iid_tuples[idx] for idx in candidate_indices_t.cpu().numpy()]
 
             exps, exp_types = self.get_explanation(rec_iid_tuples)
 

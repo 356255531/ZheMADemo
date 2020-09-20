@@ -1,8 +1,8 @@
 
-from app import app
+from .ecfkg import ECFKGRecsys
 
 SYSTEMS = {
-  'OUR_SYSTEM': 'our-system',
-  # 'BENCHMARK_1': 'benchmark-1',
+  # 'OUR_SYSTEM': 'our-system',
+  'MCFKGRecsys': ECFKGRecsys(),
   # 'BENCHMARK_2': 'benchmark-2'
 }

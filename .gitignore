@@ -2,6 +2,7 @@
 tmp/
 raw/
 *.db
+*.pkl
 
 # Pycharm
 .idea/

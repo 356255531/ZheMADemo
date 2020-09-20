@@ -1,17 +1,24 @@
 from flask import render_template, request, redirect, jsonify, url_for, make_response
 from uuid import uuid4
 from app import app
-from .model_utils import get_top_movie_ids, \
-                         get_movie_name_for_id, \
-                         get_movie_poster, \
-                         recsys
+from .utils import get_movie_name_for_id, \
+                         get_movie_poster
 from .db_utils import save_demographics_to_db, \
                       save_background_to_db, \
                       save_user_preferences_to_db, \
                       save_explanation_preference_to_sqlite, \
                       save_questionnaire_to_db, \
                       load_demographics_from_db
-from .constants import SYSTEMS
+
+from .ecfkg import ECFKGRecsys
+
+SYSTEM = 'ECFKGRecsys'
+SYSTEMS = {
+  'OUR_SYSTEM': 'peagat',
+  'ECFKGRecsys': ECFKGRecsys,
+  'BENCHMARK_2': 'benchmark-2'
+}
+recsys = SYSTEMS[SYSTEM]()
 
 # Template renders
 
@@ -118,7 +125,7 @@ def get_top_movies():
     offset = request.args.get('offset', default = 0, type = int)
     count = request.args.get('count', default = 6, type = int)
 
-    ids = get_top_movie_ids(300)[offset:offset + count]
+    ids = recsys.get_top_n_popular_items(300).iid[offset:offset + count]
 
     return jsonify([ {
         'title': get_movie_name_for_id(id),
@@ -138,7 +145,7 @@ def get_movie_recommendations_for_user(uid, system):
     if not recsys.user_is_built:
         return make_response(jsonify({ 'error': 'User not built.' }), 400)
 
-    if system == SYSTEMS['OUR_SYSTEM']:
+    if SYSTEM == 'PEAGAT' or SYSTEM == 'ECFKGRecsys':
         recommendations, explanations, explanation_types = recsys.get_recommendations(
             10 # TODO
         )
@@ -150,11 +157,8 @@ def get_movie_recommendations_for_user(uid, system):
                 rec['explanation'] = { 'type': expl_type, 'text': expl }
 
         return jsonify(recommendations)
-    elif system == SYSTEMS['BENCHMARK_1']:
-        # TODO access other recsys
-        recommendations = [ ]
-        return jsonify([ { 'id': 0, 'image': 'https://m.media-amazon.com/images/M/MV5BMDU2ZWJlMjktMTRhMy00ZTA5LWEzNDgtYmNmZTEwZTViZWJkXkEyXkFqcGdeQXVyNDQ2OTk4MzI@._V1_SX300.jpg', 'title': 'Toy Story 2' } ])
-    elif system == SYSTEMS['BENCHMARK_2']:
+
+    elif SYSTEM == SYSTEMS['BENCHMARK_2']:
         # TODO access other recsys
         recommendations = [ ]
         return jsonify([ { 'id': 0, 'image': 'https://m.media-amazon.com/images/M/MV5BMDU2ZWJlMjktMTRhMy00ZTA5LWEzNDgtYmNmZTEwZTViZWJkXkEyXkFqcGdeQXVyNDQ2OTk4MzI@._V1_SX300.jpg', 'title': 'Toy Story 3' } ])
@@ -175,7 +179,7 @@ def post_demographics_for_user(uid):
     background = request.json['background']
     save_background_to_db(uid, background)
 
-    recsys.build_user([ ], (demographics['age'], demographics['gender'], demographics['occupation']))
+    recsys.build_user([], (demographics['age'], demographics['gender'], demographics['occupation']))
     return make_response(jsonify({ 'success': True }), 202)
 
 

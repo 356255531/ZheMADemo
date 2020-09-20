@@ -1,4 +1,3 @@
-import torch
 import os
 import pandas as pd
 import numpy as np
@@ -21,7 +20,7 @@ data_folder, weights_folder, logger_folder = \
     get_folder_path(model='Graph', dataset='Movielens1m', loss_type='BPR')
 
 # Setup device
-device = 'cpu' if not torch.cuda.is_available() else 'cuda'
+device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
 # Setup args
 dataset_args = {
@@ -40,21 +39,22 @@ print('task params: {}'.format(model_args))
 
 def get_explanation_text(exp_type, exp_entity):
     if exp_type == ('iid', 'genre', 'iid'):
-        expl = 'You may like this movie, since it is similar to the {} movie {} you watched before'.format(exp_entity[2], exp_entity[1])
+        expl = 'We recommend this movie, since you may like {} movies like {}'.format(exp_entity[1], exp_entity[0])
     elif exp_type == ('iid', 'actor', 'iid'):
-        expl = 'You may like this movie, since you may like the actor {} performed in the movie {}'.format(exp_entity[2], exp_entity[1])
+        expl = 'We recommend this movie, since you may like the actor {}, who also acted the movie {}'.format(exp_entity[1], exp_entity[0])
     elif exp_type == ('iid', 'director', 'iid'):
-        expl = 'You may like this movie, since you may like the director {} who also directed the the movie {}'.format(exp_entity[2], exp_entity[1])
+        expl = 'We recommend this movie, since you may like the director {}, who also directed the the movie {}'.format(exp_entity[1], exp_entity[0])
     elif exp_type == ('iid', 'writer', 'iid'):
-        expl = 'You may like this movie, since you may like the writer {} who wrote the movie {}'.format(exp_entity[2], exp_entity[1])
+        expl = 'We recommend this movie, since you may like the writer {}, who also wrote the movie {}'.format(exp_entity[1], exp_entity[0])
+    elif exp_type == ('iid', 'uid', 'iid'):
+        expl = 'We recommend this movie, since the user, who watched the movie {} also likes this movie'.format(exp_entity[0])
     elif exp_type == ('age', 'uid', 'iid'):
         expl = 'You may like this movie, the user who is of the same age like you also likes this movie'
     elif exp_type == ('occ', 'uid', 'iid'):
         expl = 'You may like this movie, the user who has the same occ like you also likes this movie'
     elif exp_type == ('gender', 'uid', 'iid'):
         expl = 'You may like this movie, the user who has the same gender like you also likes this movie'
-    elif exp_type == ('iid', 'uid', 'iid'):
-        expl = 'You may like this movie, the user who has the movie {} also likes this movie'.format(exp_entity[0])
+
     else:
         raise NotImplementedError
     return expl
@@ -85,27 +85,22 @@ def get_utils():
     return dataset, model
 
 
-class MCFKGRecsys(object):
+class ECFKGRecsys(object):
     def __init__(self):
         self.dataset, self.model = get_utils()
 
         self.user_is_built = False
-        self.user_emb = torch.nn.Parameter(torch.Tensor(1, 64).to(device))
-        glorot(self.user_emb)
 
         rating_file = 'checkpoint/data/{}/processed/ratings.csv'.format(DS)
         movie_file = 'checkpoint/data/{}/processed/movies.csv'.format(DS)
-        user_file = 'checkpoint/data/{}/processed/users.csv'.format(DS)
 
         assert os.path.exists(rating_file)
         assert os.path.exists(movie_file)
-        assert os.path.exists(user_file)
         self.ratings = pd.read_csv(rating_file, sep=';')
         self.movies = pd.read_csv(movie_file, sep=';').fillna('')
         movie_count = self.ratings['iid'].value_counts()
         movie_count.name = 'movie_count'
         self.sorted_movie_count = movie_count.sort_values(ascending=False)
-        self.users = pd.read_csv(user_file, sep=';')
 
         # build edge_attr
         edge_index_r_nps = [
@@ -117,11 +112,6 @@ class MCFKGRecsys(object):
         r_np = np.vstack([r_np, -r_np])
 
         self.edge_attr = torch.from_numpy(r_np).long().to(device=device)
-
-        # Create user interactions map
-        self.uid_iid_map = {}
-        for uid in list(self.ratings.uid.unique()):
-            self.uid_iid_map[uid] = list(self.ratings[self.ratings.uid == uid].iid)
 
         # Create edge_index
         edge_index_np = np.hstack(list(self.dataset.edge_index_nps.values()))
@@ -144,7 +134,7 @@ class MCFKGRecsys(object):
         return popular_item_df
 
     def build_cold_user(self, demographic_info):
-        raise NotImplementedError('Not cold start for explainable matrix factorization')
+        self.build_user([], demographic_info)
 
     def build_user(self, base_iids, demographic_info):
         """
@@ -153,17 +143,41 @@ class MCFKGRecsys(object):
         :param demographic_info: (age, gender, occupation), tuple
         :return:
         """
+        assert self.user_is_built
+
+        self.user_emb = torch.nn.Parameter(torch.Tensor(1, 64).to(device))
+        glorot(self.user_emb)
+
         self.picked_iids = self.picked_iids.union(base_iids)
 
+        # Build edges for new user
+        age = int(demographic_info[0])
+        gender = demographic_info[1]
+        occ = int(demographic_info[2])
+
+        age_nid = self.dataset.e2nid_dict['age'][age]
+        occ_nid = self.dataset.e2nid_dict['occ'][occ]
         inids = [self.dataset.e2nid_dict['iid'][iid] for iid in self.picked_iids]
-        pos_nids = inids + [self.dataset.e2nid_dict['age'][demographic_info[0]], self.dataset.e2nid_dict['gender'][demographic_info[1]], self.dataset.e2nid_dict['occ'][demographic_info[2]]]
-        self.first_hop_neighbour_edge_type = [self.dataset.edge_type_dict['user2item'] for _ in self.picked_iids] + \
-                                             [
-                                                 -self.dataset.edge_type_dict['age2user'],
-                                                 -self.dataset.edge_type_dict['gender2user'],
-                                                 -self.dataset.edge_type_dict['occ2user']
+
+        if gender not in ['M', 'F']:
+            pos_nids = inids + [age_nid, occ_nid]
+            self.first_hop_neighbour_edge_type = [self.dataset.edge_type_dict['user2item'] for _ in self.picked_iids] + \
+                                                 [
+                                                     -self.dataset.edge_type_dict['age2user'],
+                                                     -self.dataset.edge_type_dict['occ2user']
                                                  ]
+        else:
+            gender_nid = self.dataset.e2nid_dict['gender'][gender]
+            pos_nids = inids + [age_nid, occ_nid, gender_nid]
+            self.first_hop_neighbour_edge_type = [self.dataset.edge_type_dict['user2item'] for _ in self.picked_iids] + \
+                                                 [
+                                                     -self.dataset.edge_type_dict['age2user'],
+                                                     -self.dataset.edge_type_dict['occ2user'],
+                                                     -self.dataset.edge_type_dict['gender2user']
+                                                 ]
+
         self.first_hop_neighbour_nids = pos_nids
+
         pos_emb = self.model.x[pos_nids].detach()
         neg_nids = np.random.choice(self.dataset.num_nodes, size=(pos_emb.shape[0],))
         neg_emb = self.model.x[neg_nids].detach()
@@ -220,7 +234,11 @@ class MCFKGRecsys(object):
             self.recommended_iids = self.recommended_iids.union(rec_iids_np)
             rec_item_df = self.movies[self.movies.iid.isin(rec_iids_np)]
 
-            expl_tuple = [self.get_explanation(rec_inid) for rec_inid in rec_inids_np]
+            pbar = tqdm.tqdm(rec_inids_np, total=rec_inids_np.shape[0])
+            expl_tuple = []
+            for idx, rec_inid in enumerate(rec_inids_np):
+                pbar.set_description('Fetching explanation for {} movie'.format(idx))
+                expl_tuple.append(self.get_explanation(rec_inid))
             exps = [_[0] for _ in expl_tuple]
             exp_types = [_[1] for _ in expl_tuple]
 
@@ -306,7 +324,7 @@ class MCFKGRecsys(object):
 
 
 if __name__ == '__main__':
-    recsys = MCFKGRecsys()
+    recsys = ECFKGRecsys()
     recsys.get_top_n_popular_items()
     recsys.build_user([1, 2, 3, 4, 5, 6, 7, 8, 9, 10], [1, 'F', 10])
     print(recsys.get_recommendations(10))
